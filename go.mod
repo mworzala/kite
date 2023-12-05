@@ -1,3 +1,3 @@
-module github.com/mworzala/proxy
+module github.com/mworzala/kite
 
 go 1.20
