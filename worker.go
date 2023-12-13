@@ -8,6 +8,14 @@ import (
 	"net"
 )
 
+var C2S_CONFIG_ALLOWED_PACKETS = [...]uint32{
+	C2SConfClientInfo,
+	C2SConfPluginMsg,
+	C2SConfKeepAlive,
+	C2SConfPong,
+	C2SConfResourcePackResponse,
+}
+
 type ClientLoginParams struct {
 	uuid     string
 	username string
@@ -37,11 +45,6 @@ func NewWorker(client net.Conn, server net.Conn) *Worker {
 	return w
 }
 
-// Processes a single clientbound packet, returning true to drop the packet, false to forward it
-func (w *Worker) processClientboundPacket(p *Packet) (drop bool, err error) {
-	return false, nil
-}
-
 func (w *Worker) handleLoginPackets(p *Packet) (drop bool, err error) {
 
 	if p.PacketID == C2SLoginLoginStart {
@@ -59,6 +62,32 @@ func (w *Worker) handleLoginPackets(p *Packet) (drop bool, err error) {
 	}
 
 	return true, errors.New(fmt.Sprintf("unexpected packet %d in login state", p.PacketID))
+}
+
+func (w *Worker) handleC2SConfigurationPackets(p *Packet) (drop bool, err error) {
+
+	if p.PacketID == C2SConfFinishConfig {
+		w.clientState = Play
+		return false, nil
+	}
+
+	for _, packetId := range C2S_CONFIG_ALLOWED_PACKETS {
+		if p.PacketID == packetId {
+			return false, nil
+		}
+	}
+
+	return true, errors.New(fmt.Sprintf("unexpected packet %d in configuration state", p.PacketID))
+}
+
+func (w *Worker) handleC2SPlayPackets(p *Packet) (drop bool, err error) {
+	// TODO: unimplemented.
+	return false, nil
+}
+
+// Processes a single clientbound packet, returning true to drop the packet, false to forward it
+func (w *Worker) processClientboundPacket(p *Packet) (drop bool, err error) {
+	return false, nil
 }
 
 // Processes a single serverbound packet, returning true to drop the packet, false to forward it
@@ -80,6 +109,14 @@ func (w *Worker) processServerboundPacket(p *Packet) (drop bool, err error) {
 
 	if w.clientState == Login {
 		return w.handleLoginPackets(p)
+	}
+
+	if w.clientState == Configuration {
+		return w.handleC2SConfigurationPackets(p)
+	}
+
+	if w.clientState == Play {
+		return w.handleC2SPlayPackets(p)
 	}
 
 	return false, errors.New(fmt.Sprintf("unexpected packet %d in state %d", p.PacketID, w.clientState))
