@@ -8,10 +8,16 @@ import (
 	"net"
 )
 
+type ClientLoginParams struct {
+	uuid     string
+	username string
+}
+
 // Represents a single client <> server connection
 type Worker struct {
 	client      net.Conn
 	clientState GameState
+	loginParams ClientLoginParams
 
 	server      net.Conn
 	serverState GameState
@@ -36,9 +42,47 @@ func (w *Worker) processClientboundPacket(p *Packet) (drop bool, err error) {
 	return false, nil
 }
 
+func (w *Worker) handleLoginPackets(p *Packet) (drop bool, err error) {
+
+	if p.PacketID == C2SLoginLoginStart {
+		// decode and capture the login params
+		loginStartPacket, err := DecodeLoginStart(p)
+		if err != nil {
+			return false, err
+		}
+		w.loginParams = ClientLoginParams{loginStartPacket.PlayerUUID, loginStartPacket.Name}
+	}
+
+	if p.PacketID == C2SLoginLoginAcknowledged {
+		w.clientState = Configuration
+		return false, nil
+	}
+
+	return true, errors.New(fmt.Sprintf("unexpected packet %d in login state", p.PacketID))
+}
+
 // Processes a single serverbound packet, returning true to drop the packet, false to forward it
 func (w *Worker) processServerboundPacket(p *Packet) (drop bool, err error) {
-	return false, nil
+
+	if w.clientState == Handshake {
+		handshakePacket, err := DecodeHandshake(p)
+		if err != nil {
+			return false, err
+		}
+		w.clientState = handshakePacket.NextState
+		return false, nil
+	}
+
+	if w.clientState == Status {
+		//todo
+		return false, nil
+	}
+
+	if w.clientState == Login {
+		return w.handleLoginPackets(p)
+	}
+
+	return false, errors.New(fmt.Sprintf("unexpected packet %d in state %d", p.PacketID, w.clientState))
 }
 
 func (w *Worker) pipe(src net.Conn, dst net.Conn, direction PacketDirection) {
@@ -100,7 +144,10 @@ func (w *Worker) pipe(src net.Conn, dst net.Conn, direction PacketDirection) {
 			if !drop {
 				_, err = dst.Write(full[0 : readIndex+uint32(pLength)])
 				if err != nil {
-					panic(err)
+					fmt.Printf("connection closed: %s\n", err)
+					_ = src.Close()
+					_ = dst.Close()
+					return
 				}
 			}
 

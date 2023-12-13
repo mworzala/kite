@@ -41,7 +41,7 @@ func startProxy(listenAddr string, target string) {
 
 func main() {
 	// Specify the local address to listen on and the target server address
-	var listenAddr = "localhost:25566"
+	var listenAddr = "localhost:25577"
 	var target = "localhost:25565"
 
 	startProxy(listenAddr, target)

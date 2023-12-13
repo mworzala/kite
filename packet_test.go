@@ -41,7 +41,7 @@ func TestDecodeLoginStartPacket(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := DecodeLoginStartPacket(&tc.packet)
+			result, err := DecodeLoginStart(&tc.packet)
 			if (err != nil) != tc.wantErr {
 				t.Errorf("DecodeLoginStartPacket() error = %v, wantErr %v for case %s", err, tc.wantErr, tc.name)
 				return

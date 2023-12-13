@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 )
 
 type PacketDirection bool
@@ -95,6 +96,26 @@ func Decode(packetb []byte) (Packet, error) {
 	}, nil
 }
 
+func Encode(packet Packet) ([]byte, error) {
+	// Create a buffer to write our data to
+	buf := new(bytes.Buffer)
+
+	// Encode the packet ID
+	err := writeVarInt(buf, int(packet.PacketID))
+	if err != nil {
+		return nil, err
+	}
+
+	// Append the data
+	_, err = buf.Write(packet.Data)
+	if err != nil {
+		return nil, err
+	}
+
+	// Convert the buffer to a byte slice and return
+	return buf.Bytes(), nil
+}
+
 // DecodeHandshake takes a Packet struct and returns a HandshakePacket struct and an error
 func DecodeHandshake(pkt *Packet) (HandshakePacket, error) {
 	reader := bytes.NewReader(pkt.Data)
@@ -133,8 +154,39 @@ func DecodeHandshake(pkt *Packet) (HandshakePacket, error) {
 	}, nil
 }
 
-// DecodeLoginStartPacket takes a Packet struct and returns a LoginStartPacket struct and an error
-func DecodeLoginStartPacket(pkt *Packet) (LoginStartPacket, error) {
+func EncodeHandshake(hsp HandshakePacket) ([]byte, error) {
+	var buf bytes.Buffer
+
+	// encode the protocol version
+	if err := writeVarInt(&buf, hsp.ProtocolVersion); err != nil {
+		return nil, err
+	}
+
+	// encode the server address
+	if len(hsp.ServerAddress) > 255 {
+		return nil, errors.New("server address too long")
+	}
+	if _, err := buf.WriteString(hsp.ServerAddress); err != nil {
+		return nil, err
+	}
+
+	// encode the server port
+	var bytesServerPort [2]byte
+	binary.BigEndian.PutUint16(bytesServerPort[:], hsp.ServerPort)
+	if _, err := buf.Write(bytesServerPort[:]); err != nil {
+		return nil, err
+	}
+
+	// encode the next state
+	if err := writeVarInt(&buf, int(hsp.NextState)); err != nil {
+		return nil, err
+	}
+
+	return buf.Bytes(), nil
+}
+
+// DecodeLoginStart takes a Packet struct and returns a LoginStartPacket struct and an error
+func DecodeLoginStart(pkt *Packet) (LoginStartPacket, error) {
 	reader := bytes.NewReader(pkt.Data)
 
 	playerName, err := readString(reader)
@@ -153,8 +205,8 @@ func DecodeLoginStartPacket(pkt *Packet) (LoginStartPacket, error) {
 	}, nil
 }
 
-// DecodeLoginSuccessPacket takes a Packet struct and returns a LoginSuccessPacket struct and an error
-func DecodeLoginSuccessPacket(pkt *Packet) (LoginSuccessPacket, error) {
+// DecodeLoginSuccess takes a Packet struct and returns a LoginSuccessPacket struct and an error
+func DecodeLoginSuccess(pkt *Packet) (LoginSuccessPacket, error) {
 	reader := bytes.NewReader(pkt.Data)
 
 	// decode the uuid
