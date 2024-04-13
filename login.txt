@@ -1,0 +1,12 @@
+
+1. c2p: handshake
+-- switch to login --
+2. c2p: login start
+3. p2c: login success
+4. c2p: login ack
+-- create server conn --
+5. p2s: handshake
+6. p2s: login start
+7. s2p: login success
+8. p2s: login ack
+-- switch to config, set player remote to server --

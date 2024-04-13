@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"net"
 )
@@ -29,7 +30,8 @@ func startProxy(listenAddr string, target string) {
 	for {
 		// Accept new connections
 		client, err := listener.Accept()
-		if err != nil {
+		if err != nil && !errors.Is(err, net.ErrClosed) {
+
 			log.Printf("Failed to accept connection: %s\n", err)
 			continue
 		}
