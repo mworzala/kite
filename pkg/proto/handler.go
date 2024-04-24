@@ -31,6 +31,10 @@ type Packet struct {
 	read bool
 }
 
+func (p Packet) Buf() io.Reader {
+	return p.buf
+}
+
 func (p Packet) Read(t packet.Packet) error {
 	if p.read {
 		return errors.New("packet already read")

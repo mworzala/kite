@@ -35,6 +35,11 @@ func ReadByte(r io.Reader) (byte, error) {
 	return value, err
 }
 
+func ReadBool(r io.Reader) (bool, error) {
+	value, err := ReadByte(r)
+	return value != 0, err
+}
+
 func ReadUShort(r io.Reader) (uint16, error) {
 	var value uint16
 	err := binary.Read(r, binary.BigEndian, &value)

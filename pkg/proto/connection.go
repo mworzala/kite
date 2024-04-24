@@ -84,6 +84,10 @@ func (c *Conn) SendPacket(pkt packet.Packet) error {
 	return nil
 }
 
+func (c *Conn) GetRemote() *Conn {
+	return c.remote
+}
+
 func (c *Conn) SetRemote(remote *Conn) {
 	c.remote = remote
 }
@@ -112,7 +116,7 @@ func (c *Conn) readLoop() {
 
 			c.cacheBuffer = buffer.AllocRemainder()
 		}
-		if errors.Is(err, io.EOF) {
+		if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
 			return
 		} else if err != nil {
 			panic(err)
@@ -154,10 +158,13 @@ func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
 		if err != nil {
 			panic(err)
 		}
-		println(fmt.Sprintf("INCOMING direction=%s, state=%s, id=%d", c.direction.String(), c.state.String(), packetID))
+		//println(fmt.Sprintf("INCOMING direction=%s, state=%s, id=%d", c.direction.String(), c.state.String(), packetID))
 
 		if c.handler != nil {
 			err = c.handler.HandlePacket(Packet{Id: packetID, buf: buffer})
+			if errors.Is(err, UnknownPacket) {
+				err = fmt.Errorf("%w: %s/%s/%d", err, c.direction.String(), c.state.String(), packetID)
+			}
 			if errors.Is(err, Forward) {
 				if c.remote == nil {
 					panic("no remote")
@@ -191,7 +198,7 @@ func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
 		}
 
 		if buffer.Remaining() > 0 {
-			panic("remaining data in buffer")
+			panic(fmt.Errorf("%s: %s/%s/%d", "remaining data in buffer", c.direction.String(), c.state.String(), packetID))
 		}
 
 		buffer.Limit(-1)

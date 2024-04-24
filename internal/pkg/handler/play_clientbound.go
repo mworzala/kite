@@ -16,6 +16,6 @@ func NewClientboundPlayHandler(p *proxy.Player) proto.Handler {
 }
 
 func (h *ClientboundPlayHandler) HandlePacket(pp proto.Packet) (err error) {
-	println("clientbound play packet", pp.Id)
+	//println("clientbound play packet", pp.Id)
 	return proto.Forward
 }
