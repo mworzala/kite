@@ -23,6 +23,13 @@ func WriteByte(w io.Writer, value byte) error {
 	return binary.Write(w, binary.BigEndian, value)
 }
 
+func WriteBool(w io.Writer, value bool) error {
+	if value {
+		return WriteByte(w, 1)
+	}
+	return WriteByte(w, 0)
+}
+
 func WriteUShort(w io.Writer, value uint16) error {
 	return binary.Write(w, binary.BigEndian, value)
 }

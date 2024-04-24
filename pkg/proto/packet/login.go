@@ -94,6 +94,7 @@ type ServerLoginSuccess struct {
 	UUID     string
 	Username string
 	//todo properties
+	Abc bool
 }
 
 func (p *ServerLoginSuccess) Direction() Direction { return Clientbound }
@@ -109,6 +110,9 @@ func (p *ServerLoginSuccess) Read(r io.Reader) (err error) {
 		return
 	}
 	_, _ = binary.ReadVarInt(r) //todo properties
+	if p.Abc, err = binary.ReadBool(r); err != nil {
+		return
+	}
 	return nil
 }
 
@@ -120,6 +124,9 @@ func (p *ServerLoginSuccess) Write(w io.Writer) (err error) {
 		return
 	}
 	_ = binary.WriteVarInt(w, 0) //todo properties
+	if err = binary.WriteBool(w, p.Abc); err != nil {
+		return
+	}
 	return nil
 }
 

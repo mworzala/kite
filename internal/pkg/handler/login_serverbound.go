@@ -55,7 +55,7 @@ func (h *ServerboundLoginHandler) handleLoginAcknowledged(p *packet.ClientLoginA
 	remote, readLoop := proto.NewConn(packet.Clientbound, serverConn)
 	remote.SetState(packet.Handshake, nil)
 	err = remote.SendPacket(&packet.ClientHandshake{
-		ProtocolVersion: 1073742009,
+		ProtocolVersion: 766,
 		ServerAddress:   "localhost:25577",
 		ServerPort:      25577,
 		NextState:       packet.Login,

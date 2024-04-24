@@ -44,8 +44,8 @@ func (h *ServerboundStatusHandler) handleStatusRequest(p *packet.ClientStatusReq
 		Status: `
 {
     "version": {
-        "name": "1.20.5-pre1",
-        "protocol": 1073742009
+        "name": "1.20.5",
+        "protocol": 766
     },
     "players": {
         "max": 100,
