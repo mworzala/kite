@@ -44,6 +44,12 @@ func (p2 *PacketBuffer) AllocRemainder() []byte {
 	return buf
 }
 
+func (p2 *PacketBuffer) RemainingSlice() []byte {
+	sl := p2.delegate[p2.position:p2.limit]
+	p2.position = p2.limit
+	return sl
+}
+
 func (p2 *PacketBuffer) ShrinkRemaining() {
 	p2.delegate = p2.delegate[p2.position:]
 	p2.position = 0

@@ -40,7 +40,7 @@ func (h *ClientboundConfigurationHandler) HandlePacket(pp proto.Packet) (err err
 }
 
 func (h *ClientboundConfigurationHandler) handlePluginMessage(p *packet.ClientConfigPluginMessage) error {
-	println("server sent PLUGIN MESSAGE ", p.Channel, string(p.Data))
+	//println("server sent PLUGIN MESSAGE ", p.Channel, string(p.Data))
 
 	if p.Channel == "minecraft:brand" {
 		oldPayload := buffer2.NewPacketBuffer(p.Data)
