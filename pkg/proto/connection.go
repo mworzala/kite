@@ -6,16 +6,29 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime/debug"
+	"syscall"
 
 	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
 	"github.com/mworzala/kite/pkg/proto/binary"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
+var idCounter int
+
+// A Conn is a connection that can send and process packets.
+// Typically, a Conn exists for both the client<>proxy and proxy<>server connections.
+// When connecting to a new server, a new Conn will be created before the old one is closed.
+//
+// A Handler is used to process packets received by the Conn.
+//
+// A Conn should be informed of the remote connection to allow packet forwarding.
 type Conn struct {
 	direction packet.Direction
 	delegate  net.Conn
 	closed    bool
+
+	id int
 
 	//todo both of these buffers should be pooled
 	readBuffer  []byte
@@ -32,15 +45,25 @@ func NewConn(direction packet.Direction, conn net.Conn) (*Conn, func()) {
 		direction: direction,
 		delegate:  conn,
 
+		id: idCounter,
+
 		readBuffer: make([]byte, 1024*1024*4),
 	}
+	idCounter++
 	//todo weird to return readLoop, not a big fan.
 	return c, c.readLoop
 }
 
 func (c *Conn) Close() {
+	if c == nil || c.closed {
+		return
+	}
+
 	c.closed = true
 	c.delegate.Close()
+	if c.remote != nil {
+		c.remote.Close()
+	}
 }
 
 func (c *Conn) SetState(state packet.State, handler Handler) {
@@ -54,9 +77,12 @@ func (c *Conn) SendPacket(pkt packet.Packet) error {
 		return io.EOF
 	}
 
+	if pkt.Direction() == c.direction {
+		return fmt.Errorf("packet %T has wrong direction", pkt)
+	}
 	pktId := pkt.ID(c.state)
 	if pktId < 0 {
-		return fmt.Errorf("packet id < 0")
+		return fmt.Errorf("packet %T is not applicable to state %s", pkt, c.state.String())
 	}
 
 	// Frame the packet
@@ -94,8 +120,9 @@ func (c *Conn) SetRemote(remote *Conn) {
 
 func (c *Conn) readLoop() {
 	defer func() {
-		if c.delegate != nil {
-			c.delegate.Close()
+		if r := recover(); r != nil {
+			println(fmt.Sprintf("panic in readLoop: %v\n%s", r, string(debug.Stack())))
+			c.Close()
 		}
 	}()
 	for {
@@ -130,75 +157,58 @@ func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
 			return
 		}
 
-		m := buffer.Mark()
-
+		packetStart := buffer.Mark()
 		length, err := binary.ReadVarInt(buffer)
 		if err != nil {
 			panic(err)
 		}
 
-		m2 := buffer.Mark()
-
+		// We just do not support legacy clients for now, just close the connection
 		if c.state == packet.Handshake && length == 0xFE {
-			println("got legacy ping")
 			c.Close()
 			return
 		}
 
 		if int(length) > buffer.Remaining() {
-			println(fmt.Sprintf("direction=%s, state=%s not enough data for packet, caching: len=%d, rem=%d", c.direction, c.state, length, buffer.Remaining()))
-			buffer.Reset(m)
+			buffer.Reset(packetStart)
 			buffer.Limit(-1)
 			return
 		}
-
-		buffer.Limit(int(length))
+		buffer.Limit(int(length)) // Cap the read buffer to the packet length
 
 		packetID, err := binary.ReadVarInt(buffer)
-		if err != nil {
+		if errors.Is(err, net.ErrClosed) {
+			c.Close()
+			return
+		} else if err != nil {
 			panic(err)
 		}
-		//println(fmt.Sprintf("INCOMING direction=%s, state=%s, id=%d", c.direction.String(), c.state.String(), packetID))
 
 		if c.handler != nil {
 			err = c.handler.HandlePacket(Packet{Id: packetID, buf: buffer})
-			if errors.Is(err, UnknownPacket) {
-				err = fmt.Errorf("%w: %s/%s/%d", err, c.direction.String(), c.state.String(), packetID)
-			}
 			if errors.Is(err, Forward) {
 				if c.remote == nil {
 					panic("no remote")
 				}
 
-				//panic("a")
-				buffer.Reset(m2)
-
 				// Write the raw packet to the remote
-				//outBuffer := bytes.NewBuffer(nil)
-				////todo +1 isnt valid because it actually needs to be the length of the varint
-				if err = binary.WriteVarInt(c.remote.delegate, length); err != nil {
-					panic(err)
-				}
-				//if err = binary.WriteVarInt(outBuffer, int32(packetID)); err != nil {
-				//	panic(err)
-				//}
-				//if _, err = c.remote.delegate.Write(outBuffer.Bytes()); err != nil {
-				//	panic(err)
-				//}
-
-				if _, err = c.remote.delegate.Write(buffer.AllocRemainder()); err != nil {
-					//if _, err = io.CopyN(c.remote.delegate, buffer, int64(length)); err != nil {
+				buffer.Reset(packetStart)
+				_, err = c.remote.delegate.Write(buffer.RemainingSlice())
+				if errors.Is(err, syscall.EPIPE) || errors.Is(err, net.ErrClosed) {
+					c.Close()
+					return
+				} else if err != nil {
 					panic(err)
 				}
 			} else if err != nil {
+				println(fmt.Errorf("packet processing failed on %d: %w (%s/%s/%d)", c.id, err, c.direction.String(), c.state.String(), packetID).Error())
 				c.Close()
-				println(fmt.Errorf("error handling packet: %w", err).Error())
 				return
 			}
 		}
 
 		if buffer.Remaining() > 0 {
-			panic(fmt.Errorf("%s: %s/%s/%d", "remaining data in buffer", c.direction.String(), c.state.String(), packetID))
+			panic(fmt.Errorf("%s: %s/%s/%d", "packet not fully read", c.direction.String(), c.state.String(), packetID))
 		}
 
 		buffer.Limit(-1)

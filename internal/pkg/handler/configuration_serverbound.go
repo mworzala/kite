@@ -33,7 +33,7 @@ func (h *ServerboundConfigurationHandler) HandlePacket(pp proto.Packet) (err err
 }
 
 func (h *ServerboundConfigurationHandler) handlePluginMessage(p *packet.ClientConfigPluginMessage) error {
-	println("PLUGIN MESSAGE ", p.Channel, string(p.Data))
+	//println("PLUGIN MESSAGE ", p.Channel, string(p.Data))
 
 	return proto.Forward
 }

@@ -20,18 +20,18 @@ const (
 	ClientPlayConfigurationAckID
 )
 
-type ClientPlayConfigurationAck struct{}
+type ClientConfigurationAck struct{}
 
-func (p *ClientPlayConfigurationAck) Direction() Direction { return Serverbound }
-func (p *ClientPlayConfigurationAck) ID(state State) int {
+func (p *ClientConfigurationAck) Direction() Direction { return Serverbound }
+func (p *ClientConfigurationAck) ID(state State) int {
 	return stateId1(state, Play, ClientPlayConfigurationAckID)
 }
 
-func (p *ClientPlayConfigurationAck) Read(r io.Reader) (err error) {
+func (p *ClientConfigurationAck) Read(r io.Reader) (err error) {
 	return nil
 }
 
-func (p *ClientPlayConfigurationAck) Write(w io.Writer) (err error) {
+func (p *ClientConfigurationAck) Write(w io.Writer) (err error) {
 	return nil
 }
 
@@ -160,24 +160,24 @@ const (
 	ServerPlayProjectilePowerID
 )
 
-type ServerPlayStartConfiguration struct {
+type ServerStartConfiguration struct {
 }
 
-func (p *ServerPlayStartConfiguration) Direction() Direction { return Serverbound }
-func (p *ServerPlayStartConfiguration) ID(state State) int {
+func (p *ServerStartConfiguration) Direction() Direction { return Clientbound }
+func (p *ServerStartConfiguration) ID(state State) int {
 	return stateId1(state, Play, ServerPlayStartConfigurationID)
 }
 
-func (p *ServerPlayStartConfiguration) Read(r io.Reader) (err error) {
+func (p *ServerStartConfiguration) Read(r io.Reader) (err error) {
 	return nil
 }
 
-func (p *ServerPlayStartConfiguration) Write(w io.Writer) (err error) {
+func (p *ServerStartConfiguration) Write(w io.Writer) (err error) {
 	return nil
 }
 
 var (
-	_ Packet = (*ClientPlayConfigurationAck)(nil)
+	_ Packet = (*ClientConfigurationAck)(nil)
 
-	_ Packet = (*ServerPlayStartConfiguration)(nil)
+	_ Packet = (*ServerStartConfiguration)(nil)
 )
