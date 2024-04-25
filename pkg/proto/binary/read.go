@@ -125,6 +125,14 @@ func ReadUUID(r io.Reader) (string, error) {
 	), err
 }
 
+func ReadByteArray(r io.Reader) ([]byte, error) {
+	length, err := ReadVarInt(r)
+	if err != nil {
+		return nil, err
+	}
+	return ReadRaw(r, int(length))
+}
+
 func ReadChatString(r io.Reader) (string, error) {
 	return ReadSizedString(r, jsonChatLength)
 }

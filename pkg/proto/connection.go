@@ -2,6 +2,8 @@ package proto
 
 import (
 	"bytes"
+	"crypto/aes"
+	"crypto/cipher"
 	"errors"
 	"fmt"
 	"io"
@@ -10,6 +12,7 @@ import (
 	"syscall"
 
 	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
+	"github.com/mworzala/kite/internal/pkg/crypto"
 	"github.com/mworzala/kite/pkg/proto/binary"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
@@ -28,6 +31,9 @@ type Conn struct {
 	delegate  net.Conn
 	closed    bool
 
+	reader io.Reader
+	writer io.Writer
+
 	id int
 
 	//todo both of these buffers should be pooled
@@ -44,6 +50,9 @@ func NewConn(direction packet.Direction, conn net.Conn) (*Conn, func()) {
 	c := &Conn{
 		direction: direction,
 		delegate:  conn,
+
+		reader: conn,
+		writer: conn,
 
 		id: idCounter,
 
@@ -103,7 +112,7 @@ func (c *Conn) SendPacket(pkt packet.Packet) error {
 	}
 
 	// Write the packet
-	if _, err := c.delegate.Write(buffer.Bytes()); err != nil {
+	if _, err := c.writer.Write(buffer.Bytes()); err != nil {
 		return err
 	}
 
@@ -116,6 +125,21 @@ func (c *Conn) GetRemote() *Conn {
 
 func (c *Conn) SetRemote(remote *Conn) {
 	c.remote = remote
+}
+
+func (c *Conn) EnableEncryption(sharedSecret []byte) error {
+	block, err := aes.NewCipher(sharedSecret)
+	if err != nil {
+		return err
+	}
+
+	cfb := crypto.NewCFB8Decrypt(block, sharedSecret)
+	c.reader = &cipher.StreamReader{S: cfb, R: c.reader}
+
+	cfb = crypto.NewCFB8Encrypt(block, sharedSecret)
+	c.writer = &cipher.StreamWriter{S: cfb, W: c.writer}
+
+	return nil
 }
 
 func (c *Conn) readLoop() {
@@ -132,7 +156,7 @@ func (c *Conn) readLoop() {
 			c.cacheBuffer = nil
 		}
 
-		n, err := c.delegate.Read(c.readBuffer[start:])
+		n, err := c.reader.Read(c.readBuffer[start:])
 		if n > 0 {
 			buffer := buffer2.NewPacketBuffer(c.readBuffer[:start+n])
 
@@ -193,7 +217,7 @@ func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
 
 				// Write the raw packet to the remote
 				buffer.Reset(packetStart)
-				_, err = c.remote.delegate.Write(buffer.RemainingSlice())
+				_, err = c.remote.writer.Write(buffer.RemainingSlice())
 				if errors.Is(err, syscall.EPIPE) || errors.Is(err, net.ErrClosed) {
 					c.Close()
 					return

@@ -8,9 +8,10 @@ import (
 
 const (
 	ClientLoginLoginStartID = iota
-	ClientLoginLoginEncryptionResponseID
+	ClientLoginEncryptionResponseID
 	ClientLoginPluginResponseID
 	ClientLoginLoginAcknowledgedID
+	ClientLoginCookieResponseID
 )
 
 type ClientLoginStart struct {
@@ -45,6 +46,36 @@ func (p *ClientLoginStart) Write(w io.Writer) (err error) {
 	return nil
 }
 
+type ClientEncryptionResponse struct {
+	SharedSecret []byte
+	VerifyToken  []byte
+}
+
+func (p *ClientEncryptionResponse) Direction() Direction { return Serverbound }
+func (p *ClientEncryptionResponse) ID(state State) int {
+	return stateId1(state, Login, ClientLoginEncryptionResponseID)
+}
+
+func (p *ClientEncryptionResponse) Read(r io.Reader) (err error) {
+	if p.SharedSecret, err = binary.ReadByteArray(r); err != nil {
+		return
+	}
+	if p.VerifyToken, err = binary.ReadByteArray(r); err != nil {
+		return
+	}
+	return nil
+}
+
+func (p *ClientEncryptionResponse) Write(w io.Writer) (err error) {
+	if err = binary.WriteByteArray(w, p.SharedSecret); err != nil {
+		return
+	}
+	if err = binary.WriteByteArray(w, p.VerifyToken); err != nil {
+		return
+	}
+	return nil
+}
+
 type ClientLoginAcknowledged struct{}
 
 func (p *ClientLoginAcknowledged) Direction() Direction { return Serverbound }
@@ -65,6 +96,7 @@ const (
 	ServerLoginLoginSuccessID
 	ServerLoginSetCompressionID
 	ServerLoginPluginRequestID
+	ServerLoginCookieRequestID
 )
 
 type ServerLoginDisconnect struct {
@@ -90,11 +122,55 @@ func (p *ServerLoginDisconnect) Write(w io.Writer) (err error) {
 	return nil
 }
 
+type ServerEncryptionRequest struct {
+	ServerID           string
+	PublicKey          []byte
+	VerifyToken        []byte
+	ShouldAuthenticate bool
+}
+
+func (p *ServerEncryptionRequest) Direction() Direction { return Clientbound }
+func (p *ServerEncryptionRequest) ID(state State) int {
+	return stateId1(state, Login, ServerLoginEncryptionRequestID)
+}
+
+func (p *ServerEncryptionRequest) Read(r io.Reader) (err error) {
+	if p.ServerID, err = binary.ReadSizedString(r, 20); err != nil {
+		return
+	}
+	if p.PublicKey, err = binary.ReadByteArray(r); err != nil {
+		return
+	}
+	if p.VerifyToken, err = binary.ReadByteArray(r); err != nil {
+		return
+	}
+	if p.ShouldAuthenticate, err = binary.ReadBool(r); err != nil {
+		return
+	}
+	return nil
+}
+
+func (p *ServerEncryptionRequest) Write(w io.Writer) (err error) {
+	if err = binary.WriteSizedString(w, p.ServerID, 20); err != nil {
+		return
+	}
+	if err = binary.WriteByteArray(w, p.PublicKey); err != nil {
+		return
+	}
+	if err = binary.WriteByteArray(w, p.VerifyToken); err != nil {
+		return
+	}
+	if err = binary.WriteBool(w, p.ShouldAuthenticate); err != nil {
+		return
+	}
+	return nil
+}
+
 type ServerLoginSuccess struct {
 	UUID     string
 	Username string
 	//todo properties
-	Abc bool
+	StrictErrorHandling bool
 }
 
 func (p *ServerLoginSuccess) Direction() Direction { return Clientbound }
@@ -110,7 +186,7 @@ func (p *ServerLoginSuccess) Read(r io.Reader) (err error) {
 		return
 	}
 	_, _ = binary.ReadVarInt(r) //todo properties
-	if p.Abc, err = binary.ReadBool(r); err != nil {
+	if p.StrictErrorHandling, err = binary.ReadBool(r); err != nil {
 		return
 	}
 	return nil
@@ -124,7 +200,7 @@ func (p *ServerLoginSuccess) Write(w io.Writer) (err error) {
 		return
 	}
 	_ = binary.WriteVarInt(w, 0) //todo properties
-	if err = binary.WriteBool(w, p.Abc); err != nil {
+	if err = binary.WriteBool(w, p.StrictErrorHandling); err != nil {
 		return
 	}
 	return nil
@@ -169,7 +245,11 @@ func (p *ServerLoginPluginRequest) Write(w io.Writer) (err error) {
 
 var (
 	_ Packet = (*ClientLoginStart)(nil)
+	_ Packet = (*ClientEncryptionResponse)(nil)
 	_ Packet = (*ClientLoginAcknowledged)(nil)
 
 	_ Packet = (*ServerLoginDisconnect)(nil)
+	_ Packet = (*ServerEncryptionRequest)(nil)
+	_ Packet = (*ServerLoginSuccess)(nil)
+	_ Packet = (*ServerLoginPluginRequest)(nil)
 )

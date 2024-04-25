@@ -9,6 +9,7 @@ todo write me
 ## Credits
 * [Contributors](https://github.com/mworzala/kite/graphs/contributors) to the project
 * [wiki.vg](https://wiki.vg/) for useful protocol documentation
+* [Tnze/go-mc](https://github.com/Tnze/go-mc) as a great reference implementation
 
 ## License
 Kite is licensed under the MIT license. See [LICENSE](LICENSE) for more information.

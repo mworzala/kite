@@ -60,6 +60,13 @@ func WriteEnum[T Enum](w io.Writer, value T) error {
 	return WriteVarInt(w, int32(value))
 }
 
+func WriteByteArray(w io.Writer, value []byte) error {
+	if err := WriteVarInt(w, int32(len(value))); err != nil {
+		return err
+	}
+	return WriteRaw(w, value)
+}
+
 func WriteSizedString(w io.Writer, value string, maxLength int) error {
 	if len(value) > maxLength {
 		return fmt.Errorf("string length %d exceeds max length %d", len(value), maxLength)
