@@ -1,20 +1,20 @@
 package handler
 
 import (
+	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
-	"github.com/mworzala/kite/pkg/proxy"
 )
 
 var _ proto.Handler = (*ServerboundLoginHandler)(nil)
 
 type ClientboundLoginHandler struct {
-	Player *proxy.Player
+	Player *kite.Player
 	Remote *proto.Conn
 	DoneCh chan bool
 }
 
-func NewClientboundLoginHandler(p *proxy.Player, remote *proto.Conn, doneCh chan bool) proto.Handler {
+func NewClientboundLoginHandler(p *kite.Player, remote *proto.Conn, doneCh chan bool) proto.Handler {
 	return &ClientboundLoginHandler{p, remote, doneCh}
 }
 
@@ -45,11 +45,11 @@ func (h *ClientboundLoginHandler) handleLoginSuccess(p *packet.ServerLoginSucces
 }
 
 type ClientboundLoginHandler2 struct {
-	Player *proxy.Player
+	Player *kite.Player
 	Remote *proto.Conn
 }
 
-func NewClientboundLoginHandler2(p *proxy.Player, remote *proto.Conn) proto.Handler {
+func NewClientboundLoginHandler2(p *kite.Player, remote *proto.Conn) proto.Handler {
 	return &ClientboundLoginHandler2{p, remote}
 }
 
@@ -94,7 +94,7 @@ func (h *ClientboundLoginHandler2) handleLoginSuccess(p *packet.ServerLoginSucce
 }
 
 type WaitForStartConfigHandler struct {
-	Player *proxy.Player
+	Player *kite.Player
 	Remote *proto.Conn
 	DoneCh chan bool
 }

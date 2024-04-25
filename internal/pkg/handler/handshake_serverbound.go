@@ -3,18 +3,18 @@ package handler
 import (
 	"fmt"
 
+	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
-	"github.com/mworzala/kite/pkg/proxy"
 )
 
 var _ proto.Handler = (*ServerboundHandshakeHandler)(nil)
 
 type ServerboundHandshakeHandler struct {
-	*proxy.Player
+	*kite.Player
 }
 
-func NewServerboundHandshakeHandler(p *proxy.Player) proto.Handler {
+func NewServerboundHandshakeHandler(p *kite.Player) proto.Handler {
 	return &ServerboundHandshakeHandler{p}
 }
 

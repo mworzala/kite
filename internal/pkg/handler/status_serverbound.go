@@ -1,18 +1,18 @@
 package handler
 
 import (
+	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
-	"github.com/mworzala/kite/pkg/proxy"
 )
 
 var _ proto.Handler = (*ServerboundStatusHandler)(nil)
 
 type ServerboundStatusHandler struct {
-	Player *proxy.Player
+	Player *kite.Player
 }
 
-func NewServerboundStatusHandler(p *proxy.Player) proto.Handler {
+func NewServerboundStatusHandler(p *kite.Player) proto.Handler {
 	return &ServerboundStatusHandler{p}
 }
 

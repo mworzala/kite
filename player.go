@@ -1,4 +1,4 @@
-package proxy
+package kite
 
 import (
 	"github.com/mworzala/kite/pkg/proto"

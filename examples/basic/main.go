@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/internal/pkg/handler"
 	"github.com/mworzala/kite/pkg/proto/packet"
-	"github.com/mworzala/kite/pkg/proxy"
 )
 
 func main() {
@@ -17,9 +17,12 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	p := proxy.New(func(p *proxy.Player) {
-		p.SetState(packet.Handshake, handler.NewServerboundHandshakeHandler(p))
-	})
+	p := &kite.Proxy{
+		ListenAddr: "localhost:25577",
+		ClientInitializer: func(p *kite.Player) {
+			p.SetState(packet.Handshake, handler.NewServerboundHandshakeHandler(p))
+		},
+	}
 	if err := p.Start(ctx); err != nil {
 		panic(err)
 	}

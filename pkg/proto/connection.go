@@ -17,6 +17,12 @@ import (
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
+// We do not allow any packets bigger than 5kb (the max cookie size)
+// This prevents an attack vector of creating a bunch of connections and sending huge packets with
+// a length 1 more than the actual data size. This forces the server to cache the packet, using up
+// to the max packet size in memory (for each connection).
+const preConfigMaxPacketSize = 5 * 1024
+
 var idCounter int
 
 // A Conn is a connection that can send and process packets.
@@ -193,6 +199,13 @@ func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
 			return
 		}
 
+		// See comment on preConfigMaxPacketSize
+		if c.state <= packet.Login && length > preConfigMaxPacketSize {
+			c.Close()
+			return
+		}
+
+		// If the packet contains more data than is available in the buffer, cache the remainder.
 		if int(length) > buffer.Remaining() {
 			buffer.Reset(packetStart)
 			buffer.Limit(-1)

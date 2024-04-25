@@ -4,21 +4,21 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/mworzala/kite"
 	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/binary"
 	"github.com/mworzala/kite/pkg/proto/packet"
-	"github.com/mworzala/kite/pkg/proxy"
 )
 
 var _ proto.Handler = (*ClientboundConfigurationHandler)(nil)
 
 type ClientboundConfigurationHandler struct {
-	Player *proxy.Player
+	Player *kite.Player
 	Remote *proto.Conn
 }
 
-func NewClientboundConfigurationHandler(p *proxy.Player, remote *proto.Conn) proto.Handler {
+func NewClientboundConfigurationHandler(p *kite.Player, remote *proto.Conn) proto.Handler {
 	return &ClientboundConfigurationHandler{p, remote}
 }
 

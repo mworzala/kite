@@ -12,10 +12,10 @@ import (
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/internal/pkg/crypto"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
-	"github.com/mworzala/kite/pkg/proxy"
 )
 
 var _ proto.Handler = (*ServerboundLoginHandler)(nil)
@@ -39,10 +39,10 @@ func init() {
 }
 
 type ServerboundLoginHandler struct {
-	Player *proxy.Player
+	Player *kite.Player
 }
 
-func NewServerboundLoginHandler(p *proxy.Player) proto.Handler {
+func NewServerboundLoginHandler(p *kite.Player) proto.Handler {
 	return &ServerboundLoginHandler{p}
 }
 
@@ -160,7 +160,6 @@ type Resp struct {
 }
 
 func (h *ServerboundLoginHandler) handleLoginAcknowledged(p *packet.ClientLoginAcknowledged) error {
-
 	serverConn, err := net.Dial("tcp", "localhost:25565")
 	if err != nil {
 		panic(err)
