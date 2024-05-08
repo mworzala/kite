@@ -23,7 +23,7 @@ func main() {
 			p.SetState(packet.Handshake, handler.NewServerboundHandshakeHandler(p))
 		},
 	}
-	if err := p.Start(ctx); err != nil {
+	if err := p.Start(); err != nil {
 		panic(err)
 	}
 
@@ -32,7 +32,8 @@ func main() {
 	stopCtx, stopCancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer stopCancel()
 
-	if err := p.Stop(stopCtx); err != nil {
+	_ = stopCtx
+	if err := p.Stop(); err != nil {
 		panic(err)
 	}
 

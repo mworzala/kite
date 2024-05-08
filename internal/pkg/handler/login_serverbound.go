@@ -7,9 +7,11 @@ import (
 	"crypto/x509"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/mworzala/kite"
@@ -20,7 +22,7 @@ import (
 
 var _ proto.Handler = (*ServerboundLoginHandler)(nil)
 
-const doAuth = true
+const doAuth = false
 
 var privateKey *rsa.PrivateKey
 
@@ -165,6 +167,8 @@ func (h *ServerboundLoginHandler) handleLoginAcknowledged(p *packet.ClientLoginA
 		panic(err)
 	}
 
+	println(fmt.Sprintf("login ack: %dms", time.Since(start).Milliseconds()))
+
 	doneCh := make(chan bool)
 	remote, readLoop := proto.NewConn(packet.Clientbound, serverConn)
 	remote.SetState(packet.Handshake, nil)
@@ -188,6 +192,8 @@ func (h *ServerboundLoginHandler) handleLoginAcknowledged(p *packet.ClientLoginA
 	go readLoop()
 
 	<-doneCh
+
+	println(fmt.Sprintf("enter config: %dms", time.Since(start).Milliseconds()))
 
 	h.Player.SetState(packet.Config, NewServerboundConfigurationHandler(h.Player))
 	return nil

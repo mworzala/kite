@@ -2,6 +2,7 @@ package handler
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/pkg/proto"
@@ -14,7 +15,10 @@ type ServerboundHandshakeHandler struct {
 	*kite.Player
 }
 
+var start time.Time
+
 func NewServerboundHandshakeHandler(p *kite.Player) proto.Handler {
+	start = time.Now()
 	return &ServerboundHandshakeHandler{p}
 }
 
