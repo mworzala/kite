@@ -18,6 +18,9 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
+	ctx, cancel = context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
 	var err error
 	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
 	if err != nil {

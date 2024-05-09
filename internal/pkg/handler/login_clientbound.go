@@ -1,11 +1,11 @@
 package handler
 
 import (
-	"bytes"
+	"fmt"
 
 	"github.com/mworzala/kite"
+	"github.com/mworzala/kite/internal/pkg/velocity"
 	"github.com/mworzala/kite/pkg/proto"
-	"github.com/mworzala/kite/pkg/proto/binary"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
@@ -43,6 +43,7 @@ func (h *ClientboundLoginHandler) HandlePacket(pp proto.Packet) (err error) {
 		}
 		return h.handleLoginSuccess(p)
 	}
+
 	return proto.UnknownPacket
 }
 
@@ -52,7 +53,7 @@ func (h *ClientboundLoginHandler) handleDisconnect(p *packet.ServerLoginDisconne
 	return nil
 }
 
-func (h *ClientboundLoginHandler) handlePluginRequest(p *packet.ServerLoginPluginRequest) (err error) {
+func (h *ClientboundLoginHandler) handlePluginRequest(p *packet.ServerLoginPluginRequest) error {
 	if p.Channel != "velocity:player_info" {
 		return h.Remote.SendPacket(&packet.ClientLoginPluginResponse{
 			MessageID: p.MessageID,
@@ -60,20 +61,25 @@ func (h *ClientboundLoginHandler) handlePluginRequest(p *packet.ServerLoginPlugi
 		})
 	}
 
-	buf := new(bytes.Buffer)
-	buf.Grow(2048)
-	if err = binary.WriteVarInt(buf, 4); err != nil { // forward version
-		return
+	// If we don't have a player profile yet for some reason this is a problem
+	// This is a sanity check, there isn't a reason (i know of) not to have a profile yet.
+	if h.Player.Profile == nil {
+		return fmt.Errorf("missing player profile")
 	}
-	if err = binary.WriteString(buf, "127.0.0.1"); err != nil { // Remote address
-		return
-	}
-	if err = h.Player.Profile.Write(buf); err != nil {
-		return
-	}
-	println("RECEIVED PLUGIN MESSAGE", p.MessageID, p.Channel, "forward version", p.Data[0])
 
-	return nil
+	requestVersion := velocity.DefaultForwardingVersion
+	if len(p.Data) > 0 {
+		requestVersion = int(p.Data[0])
+	}
+	forward, err := velocity.CreateSignedForwardingData([]byte("test12345"), h.Player.Profile, requestVersion)
+	if err != nil {
+		return err
+	}
+
+	return h.Remote.SendPacket(&packet.ClientLoginPluginResponse{
+		MessageID: p.MessageID,
+		Data:      forward,
+	})
 }
 
 func (h *ClientboundLoginHandler) handleLoginSuccess(p *packet.ServerLoginSuccess) error {

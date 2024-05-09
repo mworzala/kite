@@ -38,7 +38,8 @@ func WriteLong(w io.Writer, value int64) error {
 	return binary.Write(w, binary.BigEndian, value)
 }
 
-func WriteVarInt(w io.Writer, value int32) error {
+func WriteVarInt(w io.Writer, v int32) error {
+	value := uint32(v)
 	for {
 		if (value & ^varIntSegmentBits) == 0 {
 			return WriteByte(w, byte(value))

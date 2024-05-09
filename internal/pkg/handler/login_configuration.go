@@ -35,7 +35,6 @@ func (h *ClientboundConfigurationHandler) HandlePacket(pp proto.Packet) (err err
 		h.Remote.SetState(packet.Play, NewServerboundPlayHandler(h.Player))
 		return proto.Forward
 	}
-	println("server sent config packet", pp.Id)
 	return proto.Forward
 }
 

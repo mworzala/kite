@@ -62,7 +62,7 @@ func ReadVarInt(r io.Reader) (int32, error) {
 			return 0, err
 		}
 
-		value |= int(currentByte&varIntSegmentBits) << position
+		value |= int(currentByte&byte(varIntSegmentBits)) << position
 
 		if currentByte&varIntContinueBit == 0 {
 			break

@@ -1,7 +1,6 @@
 package proto
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"errors"
@@ -9,12 +8,14 @@ import (
 	"io"
 	"net"
 	"runtime/debug"
+	"sync"
 	"syscall"
 
 	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
 	"github.com/mworzala/kite/internal/pkg/crypto"
 	"github.com/mworzala/kite/pkg/proto/binary"
 	"github.com/mworzala/kite/pkg/proto/packet"
+	"github.com/valyala/bytebufferpool"
 )
 
 // We do not allow any packets bigger than 5kb (the max cookie size)
@@ -22,6 +23,8 @@ import (
 // a length 1 more than the actual data size. This forces the server to cache the packet, using up
 // to the max packet size in memory (for each connection).
 const preConfigMaxPacketSize = 5 * 1024
+
+var writePool bytebufferpool.Pool
 
 var idCounter int
 
@@ -38,7 +41,9 @@ type Conn struct {
 	closed    bool
 
 	reader io.Reader
+	// writer protected by wlock
 	writer io.Writer
+	wlock  sync.Mutex
 
 	id int
 
@@ -59,8 +64,12 @@ func NewConn(direction packet.Direction, conn net.Conn) (*Conn, func()) {
 
 		reader: conn,
 		writer: conn,
+		wlock:  sync.Mutex{},
 
 		id: idCounter,
+
+		state:   packet.Handshake,
+		handler: nil,
 
 		readBuffer: make([]byte, 1024*1024*4),
 	}
@@ -87,7 +96,7 @@ func (c *Conn) SetState(state packet.State, handler Handler) {
 	c.handler = handler
 }
 
-func (c *Conn) SendPacket(pkt packet.Packet) error {
+func (c *Conn) SendPacket(pkt packet.Packet) (err error) {
 	if c.closed {
 		return io.EOF
 	}
@@ -100,28 +109,40 @@ func (c *Conn) SendPacket(pkt packet.Packet) error {
 		return fmt.Errorf("packet %T is not applicable to state %s", pkt, c.state.String())
 	}
 
-	// Frame the packet
-	temp := new(bytes.Buffer)
-	if err := binary.WriteVarInt(temp, int32(pktId)); err != nil {
-		return err
+	// Write the packet (without length prefix, it will be written depending on compression during write)
+	buf := writePool.Get()
+	defer writePool.Put(buf) // Always return the buffer to the pool
+
+	if err = binary.WriteVarInt(buf, int32(pktId)); err != nil {
+		return
 	}
-	if err := pkt.Write(temp); err != nil {
-		return err
+	if err = pkt.Write(buf); err != nil {
+		return
 	}
 
-	buffer := bytes.NewBuffer(nil)
-	if err := binary.WriteVarInt(buffer, int32(temp.Len())); err != nil {
-		return err
-	}
-	if _, err := buffer.Write(temp.Bytes()); err != nil {
-		return err
+	if err = c.writePacketSync(buf.B); err != nil {
+		return
 	}
 
-	// Write the packet
-	if _, err := c.writer.Write(buffer.Bytes()); err != nil {
-		return err
+	return nil
+}
+
+func (c *Conn) writePacketSync(buffer []byte) (err error) {
+	c.wlock.Lock()
+	defer c.wlock.Unlock()
+
+	if err = binary.WriteVarInt(c.writer, int32(len(buffer))); err != nil {
+		return
 	}
 
+	n := len(buffer)
+	for n > 0 {
+		written, err := c.writer.Write(buffer)
+		n -= written
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
