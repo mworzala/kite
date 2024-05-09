@@ -1,22 +1,19 @@
 package handler
 
 import (
-	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
-var _ proto.Handler = (*ServerboundStatusHandler)(nil)
-
-type ServerboundStatusHandler struct {
-	Player *kite.Player
+type ClientStatusHandler struct {
+	Conn *proto.Conn
 }
 
-func NewServerboundStatusHandler(p *kite.Player) proto.Handler {
-	return &ServerboundStatusHandler{p}
+func NewClientStatusHandler(conn *proto.Conn) proto.Handler {
+	return &ClientStatusHandler{conn}
 }
 
-func (h *ServerboundStatusHandler) HandlePacket(pp proto.Packet) (err error) {
+func (h *ClientStatusHandler) HandlePacket(pp proto.Packet) (err error) {
 	switch pp.Id {
 	case packet.ClientStatusPingRequestID:
 		p := new(packet.ClientStatusPingRequest)
@@ -34,17 +31,16 @@ func (h *ServerboundStatusHandler) HandlePacket(pp proto.Packet) (err error) {
 	return proto.UnknownPacket
 }
 
-func (h *ServerboundStatusHandler) handlePingRequest(p *packet.ClientStatusPingRequest) error {
-	resp := &packet.ServerStatusPingResponse{Payload: p.Payload}
-	return h.Player.SendPacket(resp)
+func (h *ClientStatusHandler) handlePingRequest(p *packet.ClientStatusPingRequest) error {
+	return h.Conn.SendPacket(&packet.ServerStatusPingResponse{Payload: p.Payload})
 }
 
-func (h *ServerboundStatusHandler) handleStatusRequest(p *packet.ClientStatusRequest) error {
+func (h *ClientStatusHandler) handleStatusRequest(p *packet.ClientStatusRequest) error {
 	resp := &packet.ServerStatusResponse{
 		Status: `
 {
     "version": {
-        "name": "1.20.5",
+        "name": "1.20.6",
         "protocol": 766
     },
     "players": {
@@ -65,5 +61,7 @@ func (h *ServerboundStatusHandler) handleStatusRequest(p *packet.ClientStatusReq
 }
 `,
 	}
-	return h.Player.SendPacket(resp)
+	return h.Conn.SendPacket(resp)
 }
+
+var _ proto.Handler = (*ClientStatusHandler)(nil)

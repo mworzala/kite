@@ -12,7 +12,7 @@ type ClientHandshake struct {
 	ProtocolVersion int32
 	ServerAddress   string
 	ServerPort      uint16
-	NextState       State
+	Intent          Intent
 }
 
 const serverAddressLength = 255
@@ -32,7 +32,7 @@ func (c *ClientHandshake) Read(r io.Reader) (err error) {
 	if c.ServerPort, err = binary.ReadUShort(r); err != nil {
 		return
 	}
-	if c.NextState, err = binary.ReadEnum[State](r); err != nil {
+	if c.Intent, err = binary.ReadEnum[Intent](r); err != nil {
 		return
 	}
 	return nil
@@ -48,7 +48,7 @@ func (c *ClientHandshake) Write(w io.Writer) (err error) {
 	if err = binary.WriteUShort(w, c.ServerPort); err != nil {
 		return
 	}
-	if err = binary.WriteEnum(w, c.NextState); err != nil {
+	if err = binary.WriteEnum(w, c.Intent); err != nil {
 		return
 	}
 	return nil

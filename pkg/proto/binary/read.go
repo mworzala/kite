@@ -109,6 +109,23 @@ func ReadSizedString(r io.Reader, maxLength int) (string, error) {
 	return string(bytesName), nil
 }
 
+func ReadString(r io.Reader) (string, error) {
+	length, err := ReadVarInt(r)
+	if err != nil {
+		return "", err
+	}
+	remainder := r.(*buffer2.PacketBuffer).Remaining()
+	if length > int32(remainder) {
+		return "", fmt.Errorf("string length %d exceeds maximum %d", length, remainder)
+	}
+	value := make([]byte, length)
+	_, err = r.Read(value)
+	if err != nil {
+		return "", err
+	}
+	return string(value), nil
+}
+
 func ReadUUID(r io.Reader) (string, error) {
 	var mostSigBits, leastSigBits uint64
 	err := binary.Read(r, binary.BigEndian, &mostSigBits)
@@ -137,18 +154,48 @@ func ReadChatString(r io.Reader) (string, error) {
 	return ReadSizedString(r, jsonChatLength)
 }
 
-func ReadCollection[T any](r io.Reader, read func(io.Reader) (T, error)) (values []T, err error) {
+func ReadCollection[T any](r io.Reader, read ReadFunc[T]) (values []T, err error) {
 	var length int32
 	if length, err = ReadVarInt(r); err != nil {
 		return nil, err
 	}
 	values = make([]T, length)
 	for i := range values {
-		if values[i], err = read(r); err != nil {
+		if err = read(&values[i], r); err != nil {
 			return nil, err
 		}
 	}
 	return values, nil
+}
+
+func ReadOptional[T any](r io.Reader, read ReadFunc[T]) (*T, error) {
+	hasValue, err := ReadBool(r)
+	if err != nil {
+		return nil, err
+	}
+	if !hasValue {
+		return nil, nil
+	}
+	value := new(T)
+	if err = read(value, r); err != nil {
+		return nil, err
+	}
+	return value, nil
+}
+
+func ReadOptionalFunc[T any](r io.Reader, read func(io.Reader) (T, error)) (*T, error) {
+	hasValue, err := ReadBool(r)
+	if err != nil {
+		return nil, err
+	}
+	if !hasValue {
+		return nil, nil
+	}
+	var value T
+	if value, err = read(r); err != nil {
+		return nil, err
+	}
+	return &value, nil
 }
 
 func ReadRemaining(r io.Reader) ([]byte, error) {

@@ -71,6 +71,10 @@ func WriteSizedString(w io.Writer, value string, maxLength int) error {
 	if len(value) > maxLength {
 		return fmt.Errorf("string length %d exceeds max length %d", len(value), maxLength)
 	}
+	return WriteString(w, value)
+}
+
+func WriteString(w io.Writer, value string) error {
 	if err := WriteVarInt(w, int32(len(value))); err != nil {
 		return err
 	}
@@ -91,4 +95,26 @@ func WriteUUID(w io.Writer, value string) error {
 
 func WriteChatString(w io.Writer, value string) error {
 	return WriteSizedString(w, value, jsonChatLength)
+}
+
+func WriteCollection[T any](w io.Writer, values []T, write WriteFunc[T]) error {
+	if err := WriteVarInt(w, int32(len(values))); err != nil {
+		return err
+	}
+	for _, value := range values {
+		if err := write(&value, w); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func WriteOptionalFunc[T any](w io.Writer, value *T, write func(io.Writer, T) error) error {
+	if value == nil {
+		return WriteBool(w, false)
+	}
+	if err := WriteBool(w, true); err != nil {
+		return err
+	}
+	return write(w, *value)
 }

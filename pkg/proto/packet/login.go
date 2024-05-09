@@ -76,6 +76,43 @@ func (p *ClientEncryptionResponse) Write(w io.Writer) (err error) {
 	return nil
 }
 
+type ClientLoginPluginResponse struct {
+	MessageID int32
+	Data      []byte // nil when unsuccessful
+}
+
+func (p *ClientLoginPluginResponse) Direction() Direction { return Serverbound }
+func (p *ClientLoginPluginResponse) ID(state State) int {
+	return stateId1(state, Login, ClientLoginPluginResponseID)
+}
+
+func (p *ClientLoginPluginResponse) Read(r io.Reader) (err error) {
+	if p.MessageID, err = binary.ReadVarInt(r); err != nil {
+		return
+	}
+	var successful bool
+	if successful, err = binary.ReadBool(r); err != nil || !successful {
+		return
+	}
+	if p.Data, err = binary.ReadRaw(r, -1); err != nil {
+		return
+	}
+	return nil
+}
+
+func (p *ClientLoginPluginResponse) Write(w io.Writer) (err error) {
+	if err = binary.WriteVarInt(w, p.MessageID); err != nil {
+		return
+	}
+	if err = binary.WriteBool(w, p.Data != nil); err != nil || p.Data == nil {
+		return
+	}
+	if err = binary.WriteRaw(w, p.Data); err != nil {
+		return
+	}
+	return nil
+}
+
 type ClientLoginAcknowledged struct{}
 
 func (p *ClientLoginAcknowledged) Direction() Direction { return Serverbound }
@@ -167,9 +204,7 @@ func (p *ServerEncryptionRequest) Write(w io.Writer) (err error) {
 }
 
 type ServerLoginSuccess struct {
-	UUID     string
-	Username string
-	//todo properties
+	GameProfile
 	StrictErrorHandling bool
 }
 
@@ -179,13 +214,9 @@ func (p *ServerLoginSuccess) ID(state State) int {
 }
 
 func (p *ServerLoginSuccess) Read(r io.Reader) (err error) {
-	if p.UUID, err = binary.ReadUUID(r); err != nil {
+	if err = p.GameProfile.Read(r); err != nil {
 		return
 	}
-	if p.Username, err = binary.ReadSizedString(r, 16); err != nil {
-		return
-	}
-	_, _ = binary.ReadVarInt(r) //todo properties
 	if p.StrictErrorHandling, err = binary.ReadBool(r); err != nil {
 		return
 	}
@@ -193,13 +224,9 @@ func (p *ServerLoginSuccess) Read(r io.Reader) (err error) {
 }
 
 func (p *ServerLoginSuccess) Write(w io.Writer) (err error) {
-	if err = binary.WriteUUID(w, p.UUID); err != nil {
+	if err = p.GameProfile.Write(w); err != nil {
 		return
 	}
-	if err = binary.WriteSizedString(w, p.Username, 16); err != nil {
-		return
-	}
-	_ = binary.WriteVarInt(w, 0) //todo properties
 	if err = binary.WriteBool(w, p.StrictErrorHandling); err != nil {
 		return
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
-var _ proto.Handler = (*ServerboundLoginHandler)(nil)
+var _ proto.Handler = (*ServerboundPlayHandler)(nil)
 
 type ServerboundPlayHandler struct {
 	Player *kite.Player
@@ -34,7 +34,7 @@ func (h *ServerboundPlayHandler) HandlePacket(pp proto.Packet) (err error) {
 			ProtocolVersion: 766,
 			ServerAddress:   "localhost:25577",
 			ServerPort:      25577,
-			NextState:       packet.Login,
+			Intent:          packet.IntentLogin,
 		})
 		if err != nil {
 			panic(err)

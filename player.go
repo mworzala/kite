@@ -1,12 +1,17 @@
 package kite
 
 import (
+	"github.com/google/uuid"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
 type Player struct {
 	*proto.Conn
+
+	UUID     uuid.UUID
+	Username string
+	Profile  *packet.GameProfile
 }
 
 // SendPacket sends a packet to the client connection.

@@ -14,8 +14,8 @@ import (
 type Logger func(format string, v ...interface{})
 
 type Proxy struct {
-	ListenAddr        string
-	ClientInitializer func(p *Player)
+	ListenAddr  string
+	InitHandler func(*proto.Conn) proto.Handler
 
 	Log      Logger // Defaults to log.Printf
 	ErrorLog Logger // Defaults to log.Printf
@@ -61,8 +61,7 @@ func (p *Proxy) clientListenLoop() {
 		}
 
 		conn, readLoop := proto.NewConn(packet.Serverbound, cc)
-		player := &Player{Conn: conn}
-		p.ClientInitializer(player)
+		conn.SetState(packet.Handshake, p.InitHandler(conn))
 		go readLoop()
 	}
 }

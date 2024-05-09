@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"os"
 	"os/signal"
 	"time"
 
 	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/internal/pkg/handler"
-	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
 func main() {
@@ -17,11 +18,24 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
+	var err error
+	privateKey, err := rsa.GenerateKey(rand.Reader, 1024)
+	if err != nil {
+		panic(err)
+	}
+	// Validate Private Key
+	err = privateKey.Validate()
+	if err != nil {
+		panic(err)
+	}
+
 	p := &kite.Proxy{
 		ListenAddr: "localhost:25577",
-		ClientInitializer: func(p *kite.Player) {
-			p.SetState(packet.Handshake, handler.NewServerboundHandshakeHandler(p))
-		},
+		InitHandler: handler.MakeClientHandshakeHandler(handler.ClientHandshakeHandlerOpts{
+			LoginHandlerFunc: handler.MakeClientMojangLoginHandler(handler.ClientMojangLoginHandlerOpts{
+				PrivateKey: privateKey,
+			}),
+		}),
 	}
 	if err := p.Start(); err != nil {
 		panic(err)

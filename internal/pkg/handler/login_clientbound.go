@@ -1,12 +1,15 @@
 package handler
 
 import (
+	"bytes"
+
 	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/pkg/proto"
+	"github.com/mworzala/kite/pkg/proto/binary"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
-var _ proto.Handler = (*ServerboundLoginHandler)(nil)
+var _ proto.Handler = (*ClientboundLoginHandler)(nil)
 
 type ClientboundLoginHandler struct {
 	Player *kite.Player
@@ -19,7 +22,20 @@ func NewClientboundLoginHandler(p *kite.Player, remote *proto.Conn, doneCh chan 
 }
 
 func (h *ClientboundLoginHandler) HandlePacket(pp proto.Packet) (err error) {
+	//todo we should handle encryption request here to create an error that the backend server is in online-mode
 	switch pp.Id {
+	case packet.ServerLoginDisconnectID:
+		p := new(packet.ServerLoginDisconnect)
+		if err = pp.Read(p); err != nil {
+			return err
+		}
+		return h.handleDisconnect(p)
+	case packet.ServerLoginPluginRequestID:
+		p := new(packet.ServerLoginPluginRequest)
+		if err = pp.Read(p); err != nil {
+			return err
+		}
+		return h.handlePluginRequest(p)
 	case packet.ServerLoginLoginSuccessID:
 		p := new(packet.ServerLoginSuccess)
 		if err = pp.Read(p); err != nil {
@@ -28,6 +44,36 @@ func (h *ClientboundLoginHandler) HandlePacket(pp proto.Packet) (err error) {
 		return h.handleLoginSuccess(p)
 	}
 	return proto.UnknownPacket
+}
+
+func (h *ClientboundLoginHandler) handleDisconnect(p *packet.ServerLoginDisconnect) error {
+	println("disconnect for", p.Reason)
+	h.Player.Close()
+	return nil
+}
+
+func (h *ClientboundLoginHandler) handlePluginRequest(p *packet.ServerLoginPluginRequest) (err error) {
+	if p.Channel != "velocity:player_info" {
+		return h.Remote.SendPacket(&packet.ClientLoginPluginResponse{
+			MessageID: p.MessageID,
+			Data:      nil, // Unhandled message
+		})
+	}
+
+	buf := new(bytes.Buffer)
+	buf.Grow(2048)
+	if err = binary.WriteVarInt(buf, 4); err != nil { // forward version
+		return
+	}
+	if err = binary.WriteString(buf, "127.0.0.1"); err != nil { // Remote address
+		return
+	}
+	if err = h.Player.Profile.Write(buf); err != nil {
+		return
+	}
+	println("RECEIVED PLUGIN MESSAGE", p.MessageID, p.Channel, "forward version", p.Data[0])
+
+	return nil
 }
 
 func (h *ClientboundLoginHandler) handleLoginSuccess(p *packet.ServerLoginSuccess) error {

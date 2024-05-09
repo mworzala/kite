@@ -95,6 +95,10 @@ func (p *ServerConfigPluginMessage) Write(w io.Writer) (err error) {
 	return nil
 }
 
+type ServerConfigDisconnect struct {
+	//todo nbt
+}
+
 var (
 	_ Packet = (*ClientConfigPluginMessage)(nil)
 

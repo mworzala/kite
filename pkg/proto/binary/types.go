@@ -1,6 +1,15 @@
 package binary
 
-import "golang.org/x/exp/constraints"
+import (
+	"io"
+
+	"golang.org/x/exp/constraints"
+)
+
+type (
+	ReadFunc[T any]  func(*T, io.Reader) error
+	WriteFunc[T any] func(*T, io.Writer) error
+)
 
 type Enum interface {
 	constraints.Integer
