@@ -41,9 +41,9 @@ func (h *ServerVelocityLoginHandler) HandlePacket(pp proto.Packet) (err error) {
 			return err
 		}
 		return h.handleLoginSuccess(p)
+	default:
+		return proto.UnknownPacket
 	}
-
-	return proto.UnknownPacket
 }
 
 func (h *ServerVelocityLoginHandler) handleDisconnect(p *packet.ServerLoginDisconnect) error {

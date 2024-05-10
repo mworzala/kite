@@ -91,7 +91,7 @@ func (c *Conn) Close() {
 }
 
 func (c *Conn) SetState(state packet.State, handler Handler) {
-	println(fmt.Sprintf("setting %s state to %s", c.direction.String(), state.String()))
+	//println(fmt.Sprintf("setting %s state to %s", c.direction.String(), state.String()))
 	c.state = state
 	c.handler = handler
 }

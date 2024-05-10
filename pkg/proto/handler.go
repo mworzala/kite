@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 
+	"github.com/mworzala/kite/pkg/proto/binary"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
@@ -31,8 +32,12 @@ type Packet struct {
 	read bool
 }
 
-func (p Packet) Buf() io.Reader {
-	return p.buf
+// Consume marks the entire content of the buffer as read.
+//
+// This is pretty much to require explicit consumption of an unused packet.
+func (p Packet) Consume() {
+	_, _ = binary.ReadRaw(p.buf, binary.Remaining)
+	p.read = true
 }
 
 func (p Packet) Read(t packet.Packet) error {

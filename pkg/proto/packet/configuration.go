@@ -47,6 +47,21 @@ func (p *ClientConfigPluginMessage) Write(w io.Writer) (err error) {
 	return nil
 }
 
+type ClientConfigFinishConfiguration struct{}
+
+func (p *ClientConfigFinishConfiguration) Direction() Direction { return Serverbound }
+func (p *ClientConfigFinishConfiguration) ID(state State) int {
+	return stateId1(state, Config, ClientConfigFinishConfigurationID)
+}
+
+func (p *ClientConfigFinishConfiguration) Read(r io.Reader) (err error) {
+	return nil
+}
+
+func (p *ClientConfigFinishConfiguration) Write(w io.Writer) (err error) {
+	return nil
+}
+
 const (
 	ServerConfigCookieRequestID = iota
 	ServerConfigPluginMessageID
@@ -101,6 +116,7 @@ type ServerConfigDisconnect struct {
 
 var (
 	_ Packet = (*ClientConfigPluginMessage)(nil)
+	_ Packet = (*ClientConfigFinishConfiguration)(nil)
 
 	_ Packet = (*ServerConfigPluginMessage)(nil)
 )

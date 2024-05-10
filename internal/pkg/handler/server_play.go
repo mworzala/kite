@@ -8,21 +8,18 @@ import (
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
-var _ proto.Handler = (*ServerboundPlayHandler)(nil)
-
-type ServerboundPlayHandler struct {
+type ServerPlayHandler struct {
 	Player *kite.Player
 }
 
-func NewServerboundPlayHandler(p *kite.Player) proto.Handler {
-	return &ServerboundPlayHandler{p}
+func NewServerPlayHandler(p *kite.Player) proto.Handler {
+	return &ServerPlayHandler{p}
 }
 
-func (h *ServerboundPlayHandler) HandlePacket(pp proto.Packet) (err error) {
+func (h *ServerPlayHandler) HandlePacket(pp proto.Packet) (err error) {
 	//println("serverbound play packet", pp.Id)
 
 	if pp.Id == packet.ServerPlayPlayerChatID {
-		println("OPENING NEW SERVER CONN")
 		serverConn, err := net.Dial("tcp", "localhost:25566")
 		if err != nil {
 			panic(err)
@@ -52,3 +49,5 @@ func (h *ServerboundPlayHandler) HandlePacket(pp proto.Packet) (err error) {
 
 	return proto.Forward
 }
+
+var _ proto.Handler = (*ServerPlayHandler)(nil)

@@ -180,8 +180,8 @@ func (h *ClientMojangLoginHandler) handleLoginAcknowledged(_ *packet.ClientLogin
 	h.remote.SetRemote(h.player.Conn)
 	h.player.Conn.SetRemote(h.remote)
 
-	h.remote.SetState(packet.Config, NewClientboundConfigurationHandler(h.player, h.remote))
-	h.player.SetState(packet.Config, NewServerboundConfigurationHandler(h.player))
+	h.remote.SetState(packet.Config, NewServerConfigHandler(h.player, h.remote))
+	h.player.SetState(packet.Config, NewClientConfigHandler(h.player))
 	return nil
 }
 

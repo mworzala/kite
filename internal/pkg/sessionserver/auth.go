@@ -54,5 +54,6 @@ func HasJoined(ctx context.Context, username, serverName string, sharedSecret, p
 	if err = json.NewDecoder(resp.Body).Decode(&profile); err != nil {
 		return nil, err
 	}
+
 	return &profile, nil
 }
