@@ -1,4 +1,4 @@
-package handler
+package kite
 
 import (
 	"github.com/mworzala/kite/pkg/proto"

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/mworzala/kite"
-	"github.com/mworzala/kite/internal/pkg/handler"
 )
 
 func main() {
@@ -34,8 +33,8 @@ func main() {
 
 	p := &kite.Proxy{
 		ListenAddr: "localhost:25577",
-		InitHandler: handler.MakeClientHandshakeHandler(handler.ClientHandshakeHandlerOpts{
-			LoginHandlerFunc: handler.MakeClientMojangLoginHandler(handler.ClientMojangLoginHandlerOpts{
+		InitHandler: kite.MakeClientHandshakeHandler(kite.ClientHandshakeHandlerOpts{
+			LoginHandlerFunc: kite.MakeClientMojangLoginHandler(kite.ClientMojangLoginHandlerOpts{
 				PrivateKey: privateKey,
 			}),
 		}),

@@ -1,4 +1,4 @@
-package handler
+package kite
 
 import (
 	"context"
@@ -8,6 +8,28 @@ import (
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
+
+type HoldingTest struct {
+	*ServerVelocityLoginHandler
+	doneCh chan bool
+}
+
+func (h *HoldingTest) HandlePacket(pp proto.Packet) (err error) {
+	switch pp.Id {
+	case packet.ServerLoginLoginSuccessID:
+		p := new(packet.ServerLoginSuccess)
+		if err = pp.Read(p); err != nil {
+			return err
+		}
+		if err = h.ServerVelocityLoginHandler.handleLoginSuccess(p); err != nil {
+			return err
+		}
+		<-h.doneCh
+		return nil
+	default:
+		return h.ServerVelocityLoginHandler.HandlePacket(pp)
+	}
+}
 
 type ServerVelocityLoginHandler struct {
 	remote   *proto.Conn

@@ -1,17 +1,18 @@
-package handler
+package kite
 
 import (
-	"github.com/mworzala/kite"
+	"context"
+
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
 type ClientboundLoginHandler2 struct {
-	Player *kite.Player
+	Player *Player
 	Remote *proto.Conn
 }
 
-func NewClientboundLoginHandler2(p *kite.Player, remote *proto.Conn) proto.Handler {
+func NewClientboundLoginHandler2(p *Player, remote *proto.Conn) proto.Handler {
 	return &ClientboundLoginHandler2{p, remote}
 }
 
@@ -55,8 +56,38 @@ func (h *ClientboundLoginHandler2) handleLoginSuccess(p *packet.ServerLoginSucce
 	return nil
 }
 
+type WaitForStartConfigHandler2 struct {
+	ctx    context.Context
+	cancel context.CancelFunc
+}
+
+func (h *WaitForStartConfigHandler2) HandlePacket(pp proto.Packet) (err error) {
+	switch pp.Id {
+	case packet.ClientPlayConfigurationAckID:
+		p := new(packet.ClientConfigurationAck)
+		if err = pp.Read(p); err != nil {
+			return
+		}
+		return h.handleConfigAck(p)
+	default:
+		return nil // Eat any other packet for now
+	}
+}
+
+func (h *WaitForStartConfigHandler2) handleConfigAck(_ *packet.ClientConfigurationAck) error {
+	h.cancel()
+	//h.Remote.SetRemote(h.Player.Conn)
+	//h.Player.Conn.SetRemote(h.Remote)
+	//
+	//h.Player.SetState(packet.Config, NewClientConfigHandler(h.Player))
+	//h.Remote.SetState(packet.Config, NewServerConfigHandler(h.Player, h.Remote))
+	//
+	//h.DoneCh <- true
+	return nil
+}
+
 type WaitForStartConfigHandler struct {
-	Player *kite.Player
+	Player *Player
 	Remote *proto.Conn
 	DoneCh chan bool
 }

@@ -1,10 +1,9 @@
-package handler
+package kite
 
 import (
 	"bytes"
 	"fmt"
 
-	"github.com/mworzala/kite"
 	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/binary"
@@ -14,11 +13,11 @@ import (
 var _ proto.Handler = (*ServerConfigHandler)(nil)
 
 type ServerConfigHandler struct {
-	Player *kite.Player
+	Player *Player
 	Remote *proto.Conn
 }
 
-func NewServerConfigHandler(p *kite.Player, remote *proto.Conn) proto.Handler {
+func NewServerConfigHandler(p *Player, remote *proto.Conn) proto.Handler {
 	return &ServerConfigHandler{p, remote}
 }
 

@@ -1,4 +1,4 @@
-package handler
+package kite
 
 import (
 	"bytes"
@@ -8,10 +8,8 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
-	"net"
 	"time"
 
-	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/internal/pkg/sessionserver"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
@@ -20,7 +18,7 @@ import (
 type ClientMojangLoginHandler struct {
 	ClientMojangLoginHandlerOpts
 
-	player *kite.Player
+	player *Player
 
 	publicKey   []byte
 	verifyToken []byte
@@ -50,7 +48,7 @@ func MakeClientMojangLoginHandler(opts ClientMojangLoginHandlerOpts) func(*proto
 
 		return &ClientMojangLoginHandler{
 			ClientMojangLoginHandlerOpts: opts,
-			player:                       &kite.Player{Conn: conn},
+			player:                       &Player{Conn: conn},
 			publicKey:                    publicKey,
 			verifyToken:                  verifyToken,
 		}
@@ -139,10 +137,9 @@ func (h *ClientMojangLoginHandler) handleEncryptionResponse(p *packet.ClientEncr
 
 	// At this point we can start connecting to the target server.
 	// We will need to wait for it before processing any config state packets.
-	h.remoteCtx, h.remoteCancel = context.WithTimeout(context.Background(), 30*time.Second)
-	var cancel context.CancelCauseFunc
-	h.remoteCtx, cancel = context.WithCancelCause(h.remoteCtx)
-	h.remote, err = h.createRemoteConn(cancel, "localhost", 25565)
+	var ctx context.Context
+	ctx, h.remoteCancel = context.WithTimeout(context.Background(), 30*time.Second)
+	h.remoteCtx, h.remote, err = proto.CreateServerConn(ctx, "localhost", 25565, h.player.Profile, NewServerVelocityLoginHandler)
 	if err != nil {
 		return err
 	}
@@ -183,40 +180,6 @@ func (h *ClientMojangLoginHandler) handleLoginAcknowledged(_ *packet.ClientLogin
 	h.remote.SetState(packet.Config, NewServerConfigHandler(h.player, h.remote))
 	h.player.SetState(packet.Config, NewClientConfigHandler(h.player))
 	return nil
-}
-
-func (h *ClientMojangLoginHandler) createRemoteConn(cancel context.CancelCauseFunc, address string, port uint16) (*proto.Conn, error) {
-	serverConn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", address, port))
-	if err != nil {
-		return nil, fmt.Errorf("failed to dial remote: %w", err)
-	}
-	remote, readLoop := proto.NewConn(packet.Clientbound, serverConn)
-
-	// Handshake immediately, then we are in login.
-	handshake := &packet.ClientHandshake{
-		ProtocolVersion: 766,
-		ServerAddress:   address,
-		ServerPort:      port,
-		Intent:          packet.IntentLogin,
-	}
-	if err = remote.SendPacket(handshake); err != nil {
-		return nil, err
-	}
-
-	// Setup velocity forwarding handler & begin login.
-	remote.SetState(packet.Login, NewServerVelocityLoginHandler(remote, cancel, h.player.Profile))
-	err = remote.SendPacket(&packet.ClientLoginStart{
-		Name: h.player.Username,
-		UUID: h.player.UUID.String(),
-	})
-	if err != nil {
-		panic(err)
-	}
-
-	// Start reading from the remote connection
-	go readLoop()
-
-	return remote, nil
 }
 
 var _ proto.Handler = (*ClientMojangLoginHandler)(nil)

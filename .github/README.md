@@ -12,4 +12,4 @@ todo write me
 * [Tnze/go-mc](https://github.com/Tnze/go-mc) as a great reference implementation
 
 ## License
-Kite is licensed under the MIT license. See [LICENSE](LICENSE) for more information.
+Kite is licensed under the MIT license. See [LICENSE](../LICENSE) for more information.

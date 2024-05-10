@@ -1,16 +1,15 @@
-package handler
+package kite
 
 import (
-	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
 type ClientConfigHandler struct {
-	Player *kite.Player
+	Player *Player
 }
 
-func NewClientConfigHandler(p *kite.Player) proto.Handler {
+func NewClientConfigHandler(p *Player) proto.Handler {
 	return &ClientConfigHandler{p}
 }
 

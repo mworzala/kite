@@ -1,7 +1,6 @@
-package handler
+package kite
 
 import (
-	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
@@ -9,10 +8,10 @@ import (
 var _ proto.Handler = (*ClientPlayHandler)(nil)
 
 type ClientPlayHandler struct {
-	Player *kite.Player
+	Player *Player
 }
 
-func NewClientPlayHandler(p *kite.Player) proto.Handler {
+func NewClientPlayHandler(p *Player) proto.Handler {
 	return &ClientPlayHandler{p}
 }
 
