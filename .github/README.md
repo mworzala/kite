@@ -1,4 +1,4 @@
-# Kite
+# 🪁 Kite
 A barebones Minecraft proxy in Go. Kite is intended for those looking to write significant custom logic
 on their proxy. If your goal is a ready-made proxy, check out [Gate](https://github.com/minekube/gate) 
 or [Velocity](https://github.com/PaperMC/Velocity). 

@@ -15,7 +15,7 @@ type Logger func(format string, v ...interface{})
 
 type Proxy struct {
 	ListenAddr  string
-	InitHandler func(*proto.Conn) proto.Handler
+	InitHandler proto.ConnHandlerFunc
 
 	Log      Logger // Defaults to log.Printf
 	ErrorLog Logger // Defaults to log.Printf

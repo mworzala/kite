@@ -110,7 +110,7 @@ func (h *WaitForStartConfigHandler) handleConfigAck(_ *packet.ClientConfiguratio
 	h.Player.Conn.SetRemote(h.Remote)
 
 	h.Player.SetState(packet.Config, NewClientConfigHandler(h.Player))
-	h.Remote.SetState(packet.Config, NewServerConfigHandler(h.Player, h.Remote))
+	h.Remote.SetState(packet.Config, NewServerConfigHandler(h.Player))
 
 	h.DoneCh <- true
 	return nil

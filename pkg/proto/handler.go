@@ -26,6 +26,8 @@ type Handler interface {
 	HandlePacket(pp Packet) error
 }
 
+type ConnHandlerFunc func(*Conn) Handler
+
 type Packet struct {
 	Id   int32
 	buf  io.Reader

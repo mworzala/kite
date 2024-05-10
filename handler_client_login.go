@@ -30,6 +30,9 @@ type ClientMojangLoginHandler struct {
 
 type ClientMojangLoginHandlerOpts struct {
 	PrivateKey *rsa.PrivateKey
+
+	ClientConfigHandlerFunc func(*Player) proto.Handler
+	ServerConfigHandlerFunc func(*Player) proto.Handler
 }
 
 func MakeClientMojangLoginHandler(opts ClientMojangLoginHandlerOpts) func(*proto.Conn) proto.Handler {
@@ -177,8 +180,17 @@ func (h *ClientMojangLoginHandler) handleLoginAcknowledged(_ *packet.ClientLogin
 	h.remote.SetRemote(h.player.Conn)
 	h.player.Conn.SetRemote(h.remote)
 
-	h.remote.SetState(packet.Config, NewServerConfigHandler(h.player, h.remote))
-	h.player.SetState(packet.Config, NewClientConfigHandler(h.player))
+	if h.ClientConfigHandlerFunc != nil {
+		h.player.SetState(packet.Config, h.ClientConfigHandlerFunc(h.player))
+	} else {
+		h.player.SetState(packet.Config, NewClientConfigHandler(h.player))
+	}
+	if h.ServerConfigHandlerFunc != nil {
+		h.remote.SetState(packet.Config, h.ServerConfigHandlerFunc(h.player))
+	} else {
+		h.remote.SetState(packet.Config, NewServerConfigHandler(h.player))
+	}
+
 	return nil
 }
 

@@ -7,10 +7,12 @@ import (
 
 type ClientConfigHandler struct {
 	Player *Player
+
+	PlayHandlerFunc func(*Player) proto.Handler
 }
 
 func NewClientConfigHandler(p *Player) proto.Handler {
-	return &ClientConfigHandler{p}
+	return &ClientConfigHandler{Player: p}
 }
 
 func (h *ClientConfigHandler) HandlePacket(pp proto.Packet) (err error) {
@@ -20,24 +22,28 @@ func (h *ClientConfigHandler) HandlePacket(pp proto.Packet) (err error) {
 		if err = pp.Read(p); err != nil {
 			return
 		}
-		return h.handlePluginMessage(p)
+		return h.HandlePluginMessage(p)
 	case packet.ClientConfigFinishConfigurationID:
 		p := new(packet.ClientConfigFinishConfiguration)
 		if err = pp.Read(p); err != nil {
 			return
 		}
-		return h.handleFinishConfiguration(p)
+		return h.HandleFinishConfiguration(p)
 	default:
 		return proto.Forward
 	}
 }
 
-func (h *ClientConfigHandler) handlePluginMessage(p *packet.ClientConfigPluginMessage) error {
+func (h *ClientConfigHandler) HandlePluginMessage(p *packet.ClientConfigPluginMessage) error {
 	return proto.Forward
 }
 
-func (h *ClientConfigHandler) handleFinishConfiguration(_ *packet.ClientConfigFinishConfiguration) error {
-	h.Player.Conn.SetState(packet.Play, NewClientPlayHandler(h.Player))
+func (h *ClientConfigHandler) HandleFinishConfiguration(_ *packet.ClientConfigFinishConfiguration) error {
+	if h.PlayHandlerFunc != nil {
+		h.Player.SetState(packet.Play, h.PlayHandlerFunc(h.Player))
+	} else {
+		h.Player.SetState(packet.Play, NewClientPlayHandler(h.Player))
+	}
 	return proto.Forward
 }
 

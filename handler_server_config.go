@@ -14,11 +14,14 @@ var _ proto.Handler = (*ServerConfigHandler)(nil)
 
 type ServerConfigHandler struct {
 	Player *Player
-	Remote *proto.Conn
+
+	PlayHandlerFunc func(*Player) proto.Handler
 }
 
-func NewServerConfigHandler(p *Player, remote *proto.Conn) proto.Handler {
-	return &ServerConfigHandler{p, remote}
+func NewServerConfigHandler(p *Player) proto.Handler {
+	return &ServerConfigHandler{
+		Player: p,
+	}
 }
 
 func (h *ServerConfigHandler) HandlePacket(pp proto.Packet) (err error) {
@@ -28,16 +31,19 @@ func (h *ServerConfigHandler) HandlePacket(pp proto.Packet) (err error) {
 		if err = pp.Read(p); err != nil {
 			return err
 		}
-		return h.handlePluginMessage(p)
+		return h.HandlePluginMessage(p)
 	case packet.ServerConfigFinishConfigurationID:
-		println("server finished configuration")
-		h.Remote.SetState(packet.Play, NewServerPlayHandler(h.Player))
+		if h.PlayHandlerFunc != nil {
+			h.Player.Server().SetState(packet.Play, h.PlayHandlerFunc(h.Player))
+		} else {
+			h.Player.Server().SetState(packet.Play, NewServerPlayHandler(h.Player))
+		}
 		return proto.Forward
 	}
 	return proto.Forward
 }
 
-func (h *ServerConfigHandler) handlePluginMessage(p *packet.ClientConfigPluginMessage) error {
+func (h *ServerConfigHandler) HandlePluginMessage(p *packet.ClientConfigPluginMessage) error {
 	if p.Channel == "minecraft:brand" {
 		oldPayload := buffer2.NewPacketBuffer(p.Data)
 		oldBrand, err := binary.ReadSizedString(oldPayload, 32767)

@@ -31,9 +31,8 @@ func (p *Player) SendPacket(pkt packet.Packet) error {
 }
 
 // Server returns the current server for the player, or nil if they are not connected to a server.
-// todo
-func (p *Player) Server() any {
-	return nil
+func (p *Player) Server() *proto.Conn {
+	return p.Conn.GetRemote()
 }
 
 // ConnectTo attempts to connect to the given server, blocking until the connection is successful.
@@ -116,11 +115,9 @@ func (p *Player) ConnectTo(server *ServerInfo) (err error) {
 	p.Conn.SetRemote(remote)
 
 	p.SetState(packet.Config, NewClientConfigHandler(p))
-	remote.SetState(packet.Config, NewServerConfigHandler(p, remote))
+	remote.SetState(packet.Config, NewServerConfigHandler(p))
 
 	ch <- true
-
-	//todo need to block consuming packets until here where it is reconfigured.
 
 	return nil
 }
