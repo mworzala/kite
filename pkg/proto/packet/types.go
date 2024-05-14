@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"encoding/json"
 	"io"
 
 	"github.com/mworzala/kite/pkg/proto/binary"
@@ -93,4 +94,28 @@ func (p *ProfileProperty) Write(w io.Writer) (err error) {
 		return
 	}
 	return
+}
+
+type StatusResponse struct {
+	Version           ServerVersion    `json:"version"`
+	Players           ServerPlayerList `json:"players"`
+	Description       json.RawMessage  `json:"description"` //todo this is a text component
+	Favicon           string           `json:"favicon"`
+	EnforceSecureChat bool             `json:"enforcesSecureChat"`
+}
+
+type ServerVersion struct {
+	Name     string `json:"name"`
+	Protocol int    `json:"protocol"`
+}
+
+type ServerPlayerList struct {
+	Max    int             `json:"max"`
+	Online int             `json:"online"`
+	Sample []*ServerPlayer `json:"sample"`
+}
+
+type ServerPlayer struct {
+	Name string `json:"name"`
+	ID   string `json:"id"`
 }

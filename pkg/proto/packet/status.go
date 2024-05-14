@@ -52,10 +52,8 @@ const (
 )
 
 type ServerStatusResponse struct {
-	Status string //todo it is json
+	Payload StatusResponse
 }
-
-const statusLength = 32767
 
 func (p *ServerStatusResponse) Direction() Direction { return Clientbound }
 func (p *ServerStatusResponse) ID(state State) int {
@@ -63,14 +61,14 @@ func (p *ServerStatusResponse) ID(state State) int {
 }
 
 func (p *ServerStatusResponse) Read(r io.Reader) (err error) {
-	if p.Status, err = binary.ReadSizedString(r, statusLength); err != nil {
+	if p.Payload, err = binary.ReadTypedJSON[StatusResponse](r); err != nil {
 		return
 	}
 	return
 }
 
 func (p *ServerStatusResponse) Write(w io.Writer) (err error) {
-	if err = binary.WriteSizedString(w, p.Status, statusLength); err != nil {
+	if err = binary.WriteTypedJSON(w, p.Payload); err != nil {
 		return
 	}
 	return nil

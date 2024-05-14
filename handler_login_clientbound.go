@@ -7,16 +7,16 @@ import (
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
-type ClientboundLoginHandler2 struct {
-	Player *Player
+type ClientboundLoginHandler2[T any] struct {
+	Player *Player[T]
 	Remote *proto.Conn
 }
 
-func NewClientboundLoginHandler2(p *Player, remote *proto.Conn) proto.Handler {
-	return &ClientboundLoginHandler2{p, remote}
+func NewClientboundLoginHandler2[T any](p *Player[T], remote *proto.Conn) proto.Handler {
+	return &ClientboundLoginHandler2[T]{p, remote}
 }
 
-func (h *ClientboundLoginHandler2) HandlePacket(pp proto.Packet) (err error) {
+func (h *ClientboundLoginHandler2[T]) HandlePacket(pp proto.Packet) (err error) {
 	switch pp.Id {
 	case packet.ServerLoginLoginSuccessID:
 		p := new(packet.ServerLoginSuccess)
@@ -29,7 +29,7 @@ func (h *ClientboundLoginHandler2) HandlePacket(pp proto.Packet) (err error) {
 	}
 }
 
-func (h *ClientboundLoginHandler2) handleLoginSuccess(p *packet.ServerLoginSuccess) error {
+func (h *ClientboundLoginHandler2[T]) handleLoginSuccess(p *packet.ServerLoginSuccess) error {
 	err := h.Remote.SendPacket(&packet.ClientLoginAcknowledged{})
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func (h *ClientboundLoginHandler2) handleLoginSuccess(p *packet.ServerLoginSucce
 	oldRemote.Close()
 
 	doneCh := make(chan bool)
-	h.Player.SetState(packet.Play, &WaitForStartConfigHandler{
+	h.Player.SetState(packet.Play, &WaitForStartConfigHandler[T]{
 		Player: h.Player,
 		Remote: h.Remote,
 		DoneCh: doneCh,
@@ -86,13 +86,13 @@ func (h *WaitForStartConfigHandler2) handleConfigAck(_ *packet.ClientConfigurati
 	return nil
 }
 
-type WaitForStartConfigHandler struct {
-	Player *Player
+type WaitForStartConfigHandler[T any] struct {
+	Player *Player[T]
 	Remote *proto.Conn
 	DoneCh chan bool
 }
 
-func (h *WaitForStartConfigHandler) HandlePacket(pp proto.Packet) (err error) {
+func (h *WaitForStartConfigHandler[T]) HandlePacket(pp proto.Packet) (err error) {
 	switch pp.Id {
 	case packet.ClientPlayConfigurationAckID:
 		p := new(packet.ClientConfigurationAck)
@@ -105,7 +105,7 @@ func (h *WaitForStartConfigHandler) HandlePacket(pp proto.Packet) (err error) {
 	}
 }
 
-func (h *WaitForStartConfigHandler) handleConfigAck(_ *packet.ClientConfigurationAck) error {
+func (h *WaitForStartConfigHandler[T]) handleConfigAck(_ *packet.ClientConfigurationAck) error {
 	h.Remote.SetRemote(h.Player.Conn)
 	h.Player.Conn.SetRemote(h.Remote)
 

@@ -4,20 +4,67 @@ import (
 	"io"
 )
 
+// IDs mostly match mojang, and are noted when different.
 const (
 	ClientPlayTeleportConfirmID = iota
-	ClientPlayQueryBlockNbtID
-	ClientPlayDifficultyID
+	ClientPlayBlockEntityTagQueryID
+	ClientPlayChangeDifficultyID
 	ClientPlayChatAckID
-	ClientPlayCommandChatID
-	ClientPlaySignedCommandChatID
-	ClientPlayChatMessageID
+	ClientPlayChatCommandID
+	ClientPlayChatCommandSignedID
+	ClientPlayChatID
 	ClientPlayChatSessionUpdateID
 	ClientPlayChunkBatchReceivedID
-	ClientPlayStatusID
-	ClientPlaySettingsID
-	ClientPlayTabCompleteID
+	ClientPlayClientStatusID   // Mojang is client command
+	ClientPlayClientSettingsID // Mojang is client information
+	ClientPlayCommandSuggestionID
 	ClientPlayConfigurationAckID
+	ClientPlayContainerButtonClickID
+	ClientPlayContainerClickID
+	ClientPlayContainerCloseID
+	ClientPlayContainerSlotStateChangedID
+	ClientPlayCookieResponseID
+	ClientPlayPluginMessageID // Mojang is custom payload
+	ClientPlayDebugSampleSubscriptionID
+	ClientPlayEditBookID
+	ClientPlayEntityTagQueryID
+	ClientPlayInteractID
+	ClientPlayJigsawGenerateID
+	ClientPlayKeepAliveID
+	ClientPlayLockDifficultyID
+	ClientPlayMovePlayerPosID
+	ClientPlayMovePlayerPosRotID
+	ClientPlayMovePlayerRotID
+	ClientPlayMovePlayerStatusOnlyID
+	ClientPlayMoveVehicleID
+	ClientPlayPaddleBoatID
+	ClientPlayPickItemID
+	ClientPlayPingRequestID
+	ClientPlayPlaceRecipeID
+	ClientPlayPlayerAbilitiesID
+	ClientPlayPlayerActionID
+	ClientPlayPlayerCommandID
+	ClientPlayPlayerInputID
+	ClientPlayPongID
+	ClientPlayRecipeBookChangeSettingsID
+	ClientPlayRecipeBookSeenRecipeID
+	ClientPlayRenameItemID
+	ClientPlayResourcePackStatusID // Mojang is just resource pack
+	ClientPlaySeenAdvancementsID
+	ClientPlaySelectTradeID
+	ClientPlaySetBeaconID
+	ClientPlaySetCarriedItemID
+	ClientPlaySetCommandBlockID
+	ClientPlaySetCommandMinecartID
+	ClientPlaySetCreativeModeSlotID
+	ClientPlaySetJigsawBlockID
+	ClientPlaySetStructureBlockID
+	ClientPlaySetJigsawID
+	ClientPlaySignUpdateID
+	ClientPlaySwingID
+	ClientPlayTeleportToEntityID
+	ClientPlayUseItemOnID
+	ClientPlayUseItemID
 )
 
 type ClientConfigurationAck struct{}
@@ -35,127 +82,128 @@ func (p *ClientConfigurationAck) Write(w io.Writer) (err error) {
 	return nil
 }
 
+// IDs mostly match mojang, and are noted when different.
 const (
 	ServerPlayBundleDelimiterID = iota
-	ServerPlaySpawnEntityID
-	ServerPlaySpawnExperienceOrbID
-	ServerPlayEntityAnimationID
-	ServerPlayStatisticsID
-	ServerPlayAcknowledgeBlockChangeID
-	ServerPlayBlockBreakAnimationID
+	ServerPlayAddEntityID
+	ServerPlayAddExperienceOrbID
+	ServerPlayAnimateEntityID // Mojang is just 'animate'
+	ServerPlayAwardStatsID
+	ServerPlayBlockChangedAckID
+	ServerPlayBlockDestructionID
 	ServerPlayBlockEntityDataID
-	ServerPlayBlockActionID
-	ServerPlayBlockChangeID
-	ServerPlayBossBarID
-	ServerPlayDifficultyID
+	ServerPlayBlockEventID
+	ServerPlayBlockUpdateID
+	ServerPlayBossBarID // Mojang is boss event
+	ServerPlayChangeDifficultyID
 	ServerPlayChunkBatchFinishedID
 	ServerPlayChunkBatchStartID
 	ServerPlayChunkBiomesID
-	ServerPlayClearTitleID
-	ServerPlayTabCompleteID
-	ServerPlayDeclareCommandsID
-	ServerPlayCloseWindowID
-	ServerPlayWindowItemsID
-	ServerPlayWindowPropertyID
-	ServerPlaySetSlotID
+	ServerPlayClearTitleID // Mojang is clear titles
+	ServerPlayCommandSuggestionsID
+	ServerPlayCommandsID
+	ServerPlayContainerCloseID
+	ServerPlayContainerSetContentID
+	ServerPlayContainerSetDataID
+	ServerPlayContainerSetSlotID
 	ServerPlayCookieRequestID
-	ServerPlaySetCooldownID
+	ServerPlayCooldownID
 	ServerPlayCustomChatCompletionsID
-	ServerPlayPluginMessageID
+	ServerPlayPluginMessageID // Mojang is custom payload
 	ServerPlayDamageEventID
 	ServerPlayDebugSampleID
-	ServerPlayDeleteChatMessageID
+	ServerPlayDeleteChatID
 	ServerPlayDisconnectID
 	ServerPlayDisguisedChatID
-	ServerPlayEntityStatusID
-	ServerPlayExplosionID
-	ServerPlayUnloadChunkID
-	ServerPlayChangeGameStateID
-	ServerPlayOpenHorseWindowID
-	ServerPlayHitAnimationID
-	ServerPlayInitWorldBorderID
+	ServerPlayEntityEventID
+	ServerPlayExplosionID   // Mojang is explode
+	ServerPlayForgetChunkID // Mojang is forget level chunk
+	ServerPlayGameEventID
+	ServerPlayHorseScreenOpenID
+	ServerPlayHurtAnimationID
+	ServerPlayInitializeBorderID
 	ServerPlayKeepAliveID
-	ServerPlayChunkDataID
-	ServerPlayEffectID
-	ServerPlayParticleID
-	ServerPlayUpdateLightID
-	ServerPlayJoinGameID
+	ServerPlayChunkDataWithLightID
+	ServerPlayWorldEventID    // Mojang is level event
+	ServerPlayWorldParticleID // Mojang is level particles
+	ServerPlayLightUpdateID
+	ServerPlayLoginID
 	ServerPlayMapDataID
-	ServerPlayTradeListID
-	ServerPlayEntityPositionID
-	ServerPlayEntityPositionAndRotationID
-	ServerPlayEntityRotationID
-	ServerPlayVehicleMoveID
+	ServerPlayMerchantOffersID
+	ServerPlayMoveEntityPosID
+	ServerPlayMoveEntityPosRotID
+	ServerPlayMoveEntityRotID
+	ServerPlayMoveVehicleID
 	ServerPlayOpenBookID
-	ServerPlayOpenWindowID
+	ServerPlayOpenScreenID
 	ServerPlayOpenSignEditorID
 	ServerPlayPingID
-	ServerPlayPingResponseID
-	ServerPlayCraftRecipeResponseID
+	ServerPlayPongResponseID
+	ServerPlayPlaceGhostRecipeID
 	ServerPlayPlayerAbilitiesID
 	ServerPlayPlayerChatID
-	ServerPlayEndCombatEventID
-	ServerPlayEnterCombatEventID
+	ServerPlayPlayerCombatEndID
+	ServerPlayPlayerCombatEnterID
+	ServerPlayPlayerCombatKillID
 	ServerPlayPlayerInfoRemoveID
 	ServerPlayPlayerInfoUpdateID
-	ServerPlayFacePlayerID
-	ServerPlayPlayerPositionAndLookID
-	ServerPlayUnlockRecipesID
-	ServerPlayDestroyEntitiesID
-	ServerPlayRemoveEntityEffectID
-	ServerPlayResetScoreID
-	ServerPlayResourcePackPushID
+	ServerPlayPlayerLookAtID
+	ServerPlayPlayerPositionID
+	ServerPlayRecipeID
+	ServerPlayRemoveEntitiesID
+	ServerPlayRemoveEntityEffectID // Mojang is remove mob effect
+	ServerPlayRemoveScoreID
 	ServerPlayResourcePackPopID
+	ServerPlayResourcePackPushID
 	ServerPlayRespawnID
-	ServerPlayEntityHeadLookID
-	ServerPlayMultiBlockChangeID
+	ServerPlayRotateHeadID
+	ServerPlaySectionBlocksUpdateID
 	ServerPlaySelectAdvancementTabID
 	ServerPlayServerDataID
-	ServerPlayActionBarID
-	ServerPlayWorldBorderCenterID
-	ServerPlayWorldBorderLerpSizeID
-	ServerPlayWorldBorderSizeID
-	ServerPlayWorldBorderWarningDelayID
-	ServerPlayWorldBorderWarningReachID
-	ServerPlayCameraID
-	ServerPlayHeldItemChangeID
-	ServerPlayUpdateViewPositionID
-	ServerPlayUpdateViewDistanceID
-	ServerPlaySpawnPositionID
-	ServerPlayDisplayScoreboardID
-	ServerPlayEntityMetadataID
-	ServerPlayAttachEntityID
-	ServerPlayEntityVelocityID
-	ServerPlayEntityEquipmentID
+	ServerPlaySetActionBarTextID
+	ServerPlaySetWorldCenterID
+	ServerPlaySetWorldLerpSizeID
+	ServerPlaySetWorldSizeID
+	ServerPlaySetWorldWarningDelayID
+	ServerPlaySetWorldWarningReachID
+	ServerPlaySetCameraID
+	ServerPlaySetCarriedItemChangeID
+	ServerPlaySetChunkCacheCenterID
+	ServerPlaySetChunkCacheRadiusID
+	ServerPlaySetDefaultSpawnPositionID
+	ServerPlaySetDisplayObjectiveID
+	ServerPlaySetEntityDataID
+	ServerPlaySetEntityLinkID
+	ServerPlaySetEntityVelocityID // Mojang is set entity motion
+	ServerPlaySetEquipmentID
 	ServerPlaySetExperienceID
-	ServerPlayUpdateHealthID
-	ServerPlayScoreboardObjectiveID
+	ServerPlaySetHealthID
+	ServerPlaySetObjectiveID
 	ServerPlaySetPassengersID
-	ServerPlayTeamsID
-	ServerPlayUpdateScoreID
+	ServerPlaySetPlayerTeamID
+	ServerPlaySetScoreID
 	ServerPlaySetSimulationDistanceID
-	ServerPlaySetTitleSubtitleID
-	ServerPlayTimeUpdateID
+	ServerPlaySetSubtitleTextID
+	ServerPlaySetTimeID
 	ServerPlaySetTitleTextID
-	ServerPlaySetTitleTimeID
-	ServerPlayEntitySoundEffectID
-	ServerPlaySoundEffectID
-	MISSING_ONE_HERE_IDK_WHAT_IT_IS
+	ServerPlaySetTitleTimeID // Mojang is set titles animation
+	ServerPlaySoundEntityID
+	ServerPlaySoundID
 	ServerPlayStartConfigurationID
 	ServerPlayStopSoundID
-	ServerPlayCookieStoreID
+	ServerPlayStoreCookieID
 	ServerPlaySystemChatID
-	ServerPlayPlayerListHeaderAndFooterID
-	ServerPlayNbtQueryResponseID
-	ServerPlayCollectItemID
-	ServerPlayEntityTeleportID
-	ServerPlayTickStateID
-	ServerPlayTickStepID
+	ServerPlayTabListID
+	ServerPlayTagQueryID
+	ServerPlayTakeItemEntityID
+	ServerPlayTeleportEntityID
+	ServerPlayTickingStateID
+	ServerPlayTickingStepID
 	ServerPlayTransferID
-	ServerPlayAdvancementsID
-	ServerPlayEntityAttributesID
-	ServerPlayEntityEffectID
-	ServerPlayDeclareRecipesID
+	ServerPlayUpdateAdvancementsID
+	ServerPlayUpdateEntityAttributesID // Mojang is update attributes
+	ServerPlayUpdateEntityEffectID     // Mojang is update entity effect
+	ServerPlayUpdateRecipesID
 	ServerPlayUpdateTagsID
 	ServerPlayProjectilePowerID
 )

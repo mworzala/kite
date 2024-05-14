@@ -36,10 +36,11 @@ type ServerVelocityLoginHandler struct {
 	complete context.CancelCauseFunc // nil is success, otherwise fail reason
 
 	profile *packet.GameProfile // The profile of the connecting player
+	secret  string
 }
 
-func NewServerVelocityLoginHandler(remote *proto.Conn, complete context.CancelCauseFunc, profile *packet.GameProfile) proto.Handler {
-	return &ServerVelocityLoginHandler{remote, complete, profile}
+func NewServerVelocityLoginHandler(remote *proto.Conn, complete context.CancelCauseFunc, profile *packet.GameProfile, secret string) proto.Handler {
+	return &ServerVelocityLoginHandler{remote, complete, profile, secret}
 }
 
 func (h *ServerVelocityLoginHandler) HandlePacket(pp proto.Packet) (err error) {
@@ -85,7 +86,7 @@ func (h *ServerVelocityLoginHandler) handlePluginRequest(p *packet.ServerLoginPl
 	if len(p.Data) > 0 {
 		requestVersion = int(p.Data[0])
 	}
-	forward, err := velocity.CreateSignedForwardingData([]byte("test12345"), h.profile, requestVersion)
+	forward, err := velocity.CreateSignedForwardingData([]byte(h.secret), h.profile, requestVersion)
 	if err != nil {
 		return err
 	}

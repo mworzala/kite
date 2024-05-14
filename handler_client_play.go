@@ -5,17 +5,17 @@ import (
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
-var _ proto.Handler = (*ClientPlayHandler)(nil)
+var _ proto.Handler = (*ClientPlayHandler[any])(nil)
 
-type ClientPlayHandler struct {
-	Player *Player
+type ClientPlayHandler[T any] struct {
+	Player *Player[T]
 }
 
-func NewClientPlayHandler(p *Player) proto.Handler {
-	return &ClientPlayHandler{p}
+func NewClientPlayHandler[T any](p *Player[T]) proto.Handler {
+	return &ClientPlayHandler[T]{p}
 }
 
-func (h *ClientPlayHandler) HandlePacket(pp proto.Packet) (err error) {
+func (h *ClientPlayHandler[T]) HandlePacket(pp proto.Packet) (err error) {
 	switch pp.Id {
 	case packet.ClientPlayChatSessionUpdateID:
 		// We don't handle signed chat and if this is sent to the server it disconnects the client.

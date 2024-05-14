@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/google/uuid"
@@ -12,26 +12,29 @@ import (
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
-type Player struct {
+type Player[T any] struct {
 	*proto.Conn
 
 	UUID     uuid.UUID
 	Username string
 	Profile  *packet.GameProfile
 
+	// Generic user data for proxy users to assign
+	Data *T
+
 	// Protects against multiple connections using ConnectTo
-	connectMutex sync.Mutex
+	connecting atomic.Bool
 }
 
 // SendPacket sends a packet to the client connection.
 //
 // To send a server packet, first get the Server().
-func (p *Player) SendPacket(pkt packet.Packet) error {
+func (p *Player[T]) SendPacket(pkt packet.Packet) error {
 	return p.Conn.SendPacket(pkt)
 }
 
 // Server returns the current server for the player, or nil if they are not connected to a server.
-func (p *Player) Server() *proto.Conn {
+func (p *Player[T]) Server() *proto.Conn {
 	return p.Conn.GetRemote()
 }
 
@@ -45,15 +48,12 @@ func (p *Player) Server() *proto.Conn {
 //
 // This method implements one form of server switching including relevant checks to prevent a forced
 // disconnection on failure, however it is possible to reimplement externally if more control is needed.
-func (p *Player) ConnectTo(server *ServerInfo) (err error) {
-	if !p.connectMutex.TryLock() {
-		// Go docs dont like TryLock, but i didnt immediately figure out when its accepted as good vs bad practice.
-		// This seems ok though? I could use an atomic or something here but that seems like just badly reimplementing
-		// the behavior of trylock.
+func (p *Player[T]) ConnectTo(server *ServerInfo, clientConfigHandlerFunc func(*Player[T]) proto.Handler, serverConfigHandlerFunc func(*Player[T]) proto.Handler) (err error) {
+	// Prevent multiple connections at the same time by using the atomic bool kinda like a (try)lock.
+	if !p.connecting.CompareAndSwap(false, true) {
 		return ErrAlreadyConnecting
 	}
-	// We now have the lock, so must release it later.
-	defer p.connectMutex.Unlock()
+	defer p.connecting.Store(false)
 
 	//todo need to validate that the player is in at least the config phase also
 
@@ -62,8 +62,8 @@ func (p *Player) ConnectTo(server *ServerInfo) (err error) {
 
 	var remote *proto.Conn
 	ch := make(chan bool)
-	ctx, remote, err = proto.CreateServerConn(ctx, server.Address, uint16(server.Port), p.Profile, func(conn *proto.Conn, causeFunc context.CancelCauseFunc, profile *packet.GameProfile) proto.Handler {
-		h := NewServerVelocityLoginHandler(conn, causeFunc, profile)
+	ctx, remote, err = proto.CreateServerConn(ctx, server.Address, uint16(server.Port), p.Profile, server.Secret, func(conn *proto.Conn, causeFunc context.CancelCauseFunc, profile *packet.GameProfile, secret string) proto.Handler {
+		h := NewServerVelocityLoginHandler(conn, causeFunc, profile, secret)
 		return &HoldingTest{
 			ServerVelocityLoginHandler: h.(*ServerVelocityLoginHandler),
 			doneCh:                     ch,
@@ -114,8 +114,8 @@ func (p *Player) ConnectTo(server *ServerInfo) (err error) {
 	remote.SetRemote(p.Conn)
 	p.Conn.SetRemote(remote)
 
-	p.SetState(packet.Config, NewClientConfigHandler(p))
-	remote.SetState(packet.Config, NewServerConfigHandler(p))
+	p.SetState(packet.Config, clientConfigHandlerFunc(p))
+	remote.SetState(packet.Config, serverConfigHandlerFunc(p))
 
 	ch <- true
 

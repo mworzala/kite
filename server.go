@@ -9,4 +9,5 @@ var (
 type ServerInfo struct {
 	Address string
 	Port    int
+	Secret  string // Velocity forwarding secret
 }

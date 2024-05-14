@@ -26,3 +26,13 @@ func stateId1(actual, expected State, id int) int {
 	}
 	return id
 }
+
+func stateId2(actual, expected1, expected2 State, id1, id2 int) int {
+	if actual == expected1 {
+		return id1
+	}
+	if actual == expected2 {
+		return id2
+	}
+	return InvalidState
+}

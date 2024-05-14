@@ -2,6 +2,7 @@ package binary
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"io"
 
@@ -118,4 +119,12 @@ func WriteOptionalFunc[T any](w io.Writer, value *T, write func(io.Writer, T) er
 		return err
 	}
 	return write(w, *value)
+}
+
+func WriteTypedJSON[T any](w io.Writer, value T) error {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return err
+	}
+	return WriteByteArray(w, data)
 }

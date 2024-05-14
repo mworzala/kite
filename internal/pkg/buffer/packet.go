@@ -1,6 +1,10 @@
 package buffer
 
-import "io"
+import (
+	"io"
+
+	"github.com/valyala/bytebufferpool"
+)
 
 var (
 	ErrBufferOverflow = io.ErrShortBuffer
@@ -42,6 +46,16 @@ func (p2 *PacketBuffer) AllocRemainder() []byte {
 	copy(buf, p2.delegate[p2.position:])
 	p2.position += rem
 	return buf
+}
+
+func (p2 *PacketBuffer) AllocRemainderTo(b *bytebufferpool.ByteBuffer) {
+	rem := p2.Remaining()
+	if rem == 0 {
+		return
+	}
+
+	_, _ = b.Write(p2.delegate[p2.position:])
+	p2.position += rem
 }
 
 func (p2 *PacketBuffer) RemainingSlice() []byte {

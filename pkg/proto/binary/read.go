@@ -2,6 +2,7 @@ package binary
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -203,4 +204,13 @@ func ReadRemaining(r io.Reader) ([]byte, error) {
 		return remaining.AllocRemainder(), nil
 	}
 	return io.ReadAll(r)
+}
+
+func ReadTypedJSON[T any](r io.Reader) (result T, err error) {
+	var bytes []byte
+	if bytes, err = ReadByteArray(r); err != nil {
+		return
+	}
+	err = json.Unmarshal(bytes, &result)
+	return
 }

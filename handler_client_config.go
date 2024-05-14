@@ -5,20 +5,20 @@ import (
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
-type ClientConfigHandler struct {
-	Player *Player
+type ClientConfigHandler[T any] struct {
+	Player *Player[T]
 
-	PlayHandlerFunc func(*Player) proto.Handler
+	PlayHandlerFunc func(*Player[T]) proto.Handler
 }
 
-func NewClientConfigHandler(p *Player) proto.Handler {
-	return &ClientConfigHandler{Player: p}
+func NewClientConfigHandler[T any](p *Player[T]) proto.Handler {
+	return &ClientConfigHandler[T]{Player: p}
 }
 
-func (h *ClientConfigHandler) HandlePacket(pp proto.Packet) (err error) {
+func (h *ClientConfigHandler[T]) HandlePacket(pp proto.Packet) (err error) {
 	switch pp.Id {
 	case packet.ClientConfigPluginMessageID:
-		p := new(packet.ClientConfigPluginMessage)
+		p := new(packet.ClientPluginMessage)
 		if err = pp.Read(p); err != nil {
 			return
 		}
@@ -34,11 +34,11 @@ func (h *ClientConfigHandler) HandlePacket(pp proto.Packet) (err error) {
 	}
 }
 
-func (h *ClientConfigHandler) HandlePluginMessage(p *packet.ClientConfigPluginMessage) error {
+func (h *ClientConfigHandler[T]) HandlePluginMessage(p *packet.ClientPluginMessage) error {
 	return proto.Forward
 }
 
-func (h *ClientConfigHandler) HandleFinishConfiguration(_ *packet.ClientConfigFinishConfiguration) error {
+func (h *ClientConfigHandler[T]) HandleFinishConfiguration(_ *packet.ClientConfigFinishConfiguration) error {
 	if h.PlayHandlerFunc != nil {
 		h.Player.SetState(packet.Play, h.PlayHandlerFunc(h.Player))
 	} else {
@@ -47,4 +47,4 @@ func (h *ClientConfigHandler) HandleFinishConfiguration(_ *packet.ClientConfigFi
 	return proto.Forward
 }
 
-var _ proto.Handler = (*ClientConfigHandler)(nil)
+var _ proto.Handler = (*ClientConfigHandler[any])(nil)

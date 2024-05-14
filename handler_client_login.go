@@ -15,10 +15,10 @@ import (
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
-type ClientMojangLoginHandler struct {
-	ClientMojangLoginHandlerOpts
+type ClientMojangLoginHandler[T any] struct {
+	ClientMojangLoginHandlerOpts[T]
 
-	player *Player
+	Player *Player[T]
 
 	publicKey   []byte
 	verifyToken []byte
@@ -28,15 +28,19 @@ type ClientMojangLoginHandler struct {
 	remote       *proto.Conn
 }
 
-type ClientMojangLoginHandlerOpts struct {
-	PrivateKey *rsa.PrivateKey
+type ClientMojangLoginHandlerOpts[T any] struct {
+	PrivateKey        *rsa.PrivateKey
+	InitialServerFunc func() ServerInfo
 
-	ClientConfigHandlerFunc func(*Player) proto.Handler
-	ServerConfigHandlerFunc func(*Player) proto.Handler
+	ClientConfigHandlerFunc func(*Player[T]) proto.Handler
+	ServerConfigHandlerFunc func(*Player[T]) proto.Handler
 }
 
-func MakeClientMojangLoginHandler(opts ClientMojangLoginHandlerOpts) func(*proto.Conn) proto.Handler {
+func MakeClientMojangLoginHandler[T any](opts ClientMojangLoginHandlerOpts[T]) func(*proto.Conn) proto.Handler {
 	return func(conn *proto.Conn) proto.Handler {
+		if opts.InitialServerFunc == nil {
+			panic("InitialServerFunc is needed") //todo should not be a panic
+		}
 
 		publicKey, err := x509.MarshalPKIXPublicKey(&opts.PrivateKey.PublicKey)
 		if err != nil {
@@ -49,44 +53,44 @@ func MakeClientMojangLoginHandler(opts ClientMojangLoginHandlerOpts) func(*proto
 			panic(fmt.Errorf("failed to generate random verify token: %w", err))
 		}
 
-		return &ClientMojangLoginHandler{
+		return &ClientMojangLoginHandler[T]{
 			ClientMojangLoginHandlerOpts: opts,
-			player:                       &Player{Conn: conn},
+			Player:                       &Player[T]{Conn: conn},
 			publicKey:                    publicKey,
 			verifyToken:                  verifyToken,
 		}
 	}
 }
 
-func (h *ClientMojangLoginHandler) HandlePacket(pp proto.Packet) (err error) {
+func (h *ClientMojangLoginHandler[T]) HandlePacket(pp proto.Packet) (err error) {
 	switch pp.Id {
 	case packet.ClientLoginLoginStartID:
 		p := new(packet.ClientLoginStart)
 		if err = pp.Read(p); err != nil {
 			return err
 		}
-		return h.handleLoginStart(p)
+		return h.HandleLoginStart(p)
 	case packet.ClientLoginLoginAcknowledgedID:
 		p := new(packet.ClientLoginAcknowledged)
 		if err = pp.Read(p); err != nil {
 			return err
 		}
-		return h.handleLoginAcknowledged(p)
+		return h.HandleLoginAcknowledged(p)
 	case packet.ClientLoginEncryptionResponseID:
 		p := new(packet.ClientEncryptionResponse)
 		if err = pp.Read(p); err != nil {
 			return err
 		}
-		return h.handleEncryptionResponse(p)
+		return h.HandleEncryptionResponse(p)
 	default:
 		return proto.UnknownPacket
 	}
 }
 
-func (h *ClientMojangLoginHandler) handleLoginStart(p *packet.ClientLoginStart) (err error) {
-	h.player.Username = p.Name
+func (h *ClientMojangLoginHandler[T]) HandleLoginStart(p *packet.ClientLoginStart) (err error) {
+	h.Player.Username = p.Name
 
-	return h.player.SendPacket(&packet.ServerEncryptionRequest{
+	return h.Player.SendPacket(&packet.ServerEncryptionRequest{
 		ServerID:           "",
 		PublicKey:          h.publicKey,
 		VerifyToken:        h.verifyToken,
@@ -94,7 +98,7 @@ func (h *ClientMojangLoginHandler) handleLoginStart(p *packet.ClientLoginStart) 
 	})
 }
 
-func (h *ClientMojangLoginHandler) handleEncryptionResponse(p *packet.ClientEncryptionResponse) error {
+func (h *ClientMojangLoginHandler[T]) HandleEncryptionResponse(p *packet.ClientEncryptionResponse) error {
 	decryptedVerifyToken, err := rsa.DecryptPKCS1v15(rand.Reader, h.PrivateKey, p.VerifyToken)
 	if err != nil {
 		panic(err)
@@ -109,20 +113,20 @@ func (h *ClientMojangLoginHandler) handleEncryptionResponse(p *packet.ClientEncr
 	}
 
 	// Read and write encrypted data
-	if err = h.player.Conn.EnableEncryption(sharedSecret); err != nil {
+	if err = h.Player.Conn.EnableEncryption(sharedSecret); err != nil {
 		return err
 	}
 
 	// Do serverside auth with session server
-	profile, err := sessionserver.HasJoined(context.Background(), h.player.Username, "", sharedSecret, h.publicKey)
+	profile, err := sessionserver.HasJoined(context.Background(), h.Player.Username, "", sharedSecret, h.publicKey)
 	if err != nil {
 		return err
 	} else if profile == nil {
 		return errors.New("client did not do self auth")
 	}
 
-	h.player.UUID = profile.ID
-	h.player.Username = profile.Name
+	h.Player.UUID = profile.ID
+	h.Player.Username = profile.Name
 	properties := make([]packet.ProfileProperty, len(profile.Properties))
 	for i, prop := range profile.Properties {
 		p := packet.ProfileProperty{Name: prop.Name, Value: prop.Value}
@@ -132,31 +136,33 @@ func (h *ClientMojangLoginHandler) handleEncryptionResponse(p *packet.ClientEncr
 		properties[i] = p
 	}
 
-	h.player.Profile = &packet.GameProfile{
-		UUID:       h.player.UUID.String(),
-		Username:   h.player.Username,
+	h.Player.Profile = &packet.GameProfile{
+		UUID:       h.Player.UUID.String(),
+		Username:   h.Player.Username,
 		Properties: properties,
 	}
 
 	// At this point we can start connecting to the target server.
 	// We will need to wait for it before processing any config state packets.
+	targetServer := h.InitialServerFunc()
 	var ctx context.Context
 	ctx, h.remoteCancel = context.WithTimeout(context.Background(), 30*time.Second)
-	h.remoteCtx, h.remote, err = proto.CreateServerConn(ctx, "localhost", 25565, h.player.Profile, NewServerVelocityLoginHandler)
+	h.remoteCtx, h.remote, err = proto.CreateServerConn(ctx, targetServer.Address, uint16(targetServer.Port),
+		h.Player.Profile, targetServer.Secret, NewServerVelocityLoginHandler)
 	if err != nil {
 		return err
 	}
 
-	return h.player.SendPacket(&packet.ServerLoginSuccess{
-		GameProfile:         *h.player.Profile,
+	return h.Player.SendPacket(&packet.ServerLoginSuccess{
+		GameProfile:         *h.Player.Profile,
 		StrictErrorHandling: true,
 	})
 }
 
-func (h *ClientMojangLoginHandler) handleLoginAcknowledged(_ *packet.ClientLoginAcknowledged) error {
+func (h *ClientMojangLoginHandler[T]) HandleLoginAcknowledged(_ *packet.ClientLoginAcknowledged) error {
 	// This should never happen in normal operation, but a client could just send a login ack
 	// immediately in an attempt to bypass auth. So don't let that happen :)
-	if h.player.Profile == nil {
+	if h.Player.Profile == nil {
 		// The player didn't do encryption. Don't let them through.
 		return fmt.Errorf("missing player profile")
 	}
@@ -177,21 +183,21 @@ func (h *ClientMojangLoginHandler) handleLoginAcknowledged(_ *packet.ClientLogin
 	// A clean cancel is the success case, so we don't need to do anything.
 	// We are now connected to the remote.
 
-	h.remote.SetRemote(h.player.Conn)
-	h.player.Conn.SetRemote(h.remote)
+	h.remote.SetRemote(h.Player.Conn)
+	h.Player.Conn.SetRemote(h.remote)
 
 	if h.ClientConfigHandlerFunc != nil {
-		h.player.SetState(packet.Config, h.ClientConfigHandlerFunc(h.player))
+		h.Player.SetState(packet.Config, h.ClientConfigHandlerFunc(h.Player))
 	} else {
-		h.player.SetState(packet.Config, NewClientConfigHandler(h.player))
+		h.Player.SetState(packet.Config, NewClientConfigHandler(h.Player))
 	}
 	if h.ServerConfigHandlerFunc != nil {
-		h.remote.SetState(packet.Config, h.ServerConfigHandlerFunc(h.player))
+		h.remote.SetState(packet.Config, h.ServerConfigHandlerFunc(h.Player))
 	} else {
-		h.remote.SetState(packet.Config, NewServerConfigHandler(h.player))
+		h.remote.SetState(packet.Config, NewServerConfigHandler(h.Player))
 	}
 
 	return nil
 }
 
-var _ proto.Handler = (*ClientMojangLoginHandler)(nil)
+var _ proto.Handler = (*ClientMojangLoginHandler[any])(nil)

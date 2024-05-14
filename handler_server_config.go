@@ -10,24 +10,24 @@ import (
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
-var _ proto.Handler = (*ServerConfigHandler)(nil)
+var _ proto.Handler = (*ServerConfigHandler[any])(nil)
 
-type ServerConfigHandler struct {
-	Player *Player
+type ServerConfigHandler[T any] struct {
+	Player *Player[T]
 
-	PlayHandlerFunc func(*Player) proto.Handler
+	PlayHandlerFunc func(*Player[T]) proto.Handler
 }
 
-func NewServerConfigHandler(p *Player) proto.Handler {
-	return &ServerConfigHandler{
+func NewServerConfigHandler[T any](p *Player[T]) proto.Handler {
+	return &ServerConfigHandler[T]{
 		Player: p,
 	}
 }
 
-func (h *ServerConfigHandler) HandlePacket(pp proto.Packet) (err error) {
+func (h *ServerConfigHandler[T]) HandlePacket(pp proto.Packet) (err error) {
 	switch pp.Id {
 	case packet.ServerConfigPluginMessageID:
-		p := new(packet.ClientConfigPluginMessage)
+		p := new(packet.ClientPluginMessage)
 		if err = pp.Read(p); err != nil {
 			return err
 		}
@@ -43,7 +43,7 @@ func (h *ServerConfigHandler) HandlePacket(pp proto.Packet) (err error) {
 	return proto.Forward
 }
 
-func (h *ServerConfigHandler) HandlePluginMessage(p *packet.ClientConfigPluginMessage) error {
+func (h *ServerConfigHandler[T]) HandlePluginMessage(p *packet.ClientPluginMessage) error {
 	if p.Channel == "minecraft:brand" {
 		oldPayload := buffer2.NewPacketBuffer(p.Data)
 		oldBrand, err := binary.ReadSizedString(oldPayload, 32767)
@@ -57,7 +57,7 @@ func (h *ServerConfigHandler) HandlePluginMessage(p *packet.ClientConfigPluginMe
 			return err
 		}
 
-		resp := &packet.ServerConfigPluginMessage{
+		resp := &packet.ServerPluginMessage{
 			Channel: "minecraft:brand",
 			Data:    newPayload.Bytes(),
 		}

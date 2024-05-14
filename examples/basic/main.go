@@ -11,6 +11,9 @@ import (
 	"github.com/mworzala/kite"
 )
 
+type UserData struct {
+}
+
 func main() {
 	println("Hello, World!")
 
@@ -34,7 +37,7 @@ func main() {
 	p := &kite.Proxy{
 		ListenAddr: "localhost:25577",
 		InitHandler: kite.MakeClientHandshakeHandler(kite.ClientHandshakeHandlerOpts{
-			LoginHandlerFunc: kite.MakeClientMojangLoginHandler(kite.ClientMojangLoginHandlerOpts{
+			LoginHandlerFunc: kite.MakeClientMojangLoginHandler[UserData](kite.ClientMojangLoginHandlerOpts[UserData]{
 				PrivateKey: privateKey,
 			}),
 		}),

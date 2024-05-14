@@ -13,7 +13,7 @@ import (
 // CreateServerConn connects to a remote server and returns a context which completes either when
 // an error occurs or the connection is ready to enter the config phase. The returned context has
 // a cause (see context.Cause). If the cause is not context.Canceled, the connection has been closed.
-func CreateServerConn(ctx context.Context, address string, port uint16, profile *packet.GameProfile, handleFunc func(*Conn, context.CancelCauseFunc, *packet.GameProfile) Handler) (context.Context, *Conn, error) {
+func CreateServerConn(ctx context.Context, address string, port uint16, profile *packet.GameProfile, secret string, handleFunc func(*Conn, context.CancelCauseFunc, *packet.GameProfile, string) Handler) (context.Context, *Conn, error) {
 	var cancel context.CancelCauseFunc
 	ctx, cancel = context.WithCancelCause(ctx)
 
@@ -35,7 +35,7 @@ func CreateServerConn(ctx context.Context, address string, port uint16, profile 
 	}
 
 	// Setup velocity forwarding handler & begin login.
-	remote.SetState(packet.Login, handleFunc(remote, cancel, profile))
+	remote.SetState(packet.Login, handleFunc(remote, cancel, profile, secret))
 	err = remote.SendPacket(&packet.ClientLoginStart{
 		Name: profile.Username,
 		UUID: profile.UUID,

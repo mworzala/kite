@@ -18,15 +18,19 @@ import (
 	"github.com/valyala/bytebufferpool"
 )
 
-// We do not allow any packets bigger than 5kb (the max cookie size)
-// This prevents an attack vector of creating a bunch of connections and sending huge packets with
-// a length 1 more than the actual data size. This forces the server to cache the packet, using up
-// to the max packet size in memory (for each connection).
-const preConfigMaxPacketSize = 5 * 1024
+const (
+	maxPacketSize = 2_097_151
+	// Before the config state we do not allow any packets bigger than 5kb (the max cookie size)
+	// This prevents an attack vector of creating a bunch of connections and sending huge packets with
+	// a length 1 more than the actual data size. This forces the server to cache the packet, using up
+	// to the max packet size in memory (for each connection).
+	maxPacketSizePreConfig = 5 * 1024
+)
 
-var writePool bytebufferpool.Pool
-
-var idCounter int
+var (
+	writePool     bytebufferpool.Pool
+	readCachePool bytebufferpool.Pool
+)
 
 // A Conn is a connection that can send and process packets.
 // Typically, a Conn exists for both the client<>proxy and proxy<>server connections.
@@ -45,16 +49,16 @@ type Conn struct {
 	writer io.Writer
 	wlock  sync.Mutex
 
-	id int
-
-	//todo both of these buffers should be pooled
 	readBuffer  []byte
-	cacheBuffer []byte // Used for caching partially read packets
+	cacheBuffer *bytebufferpool.ByteBuffer // Used for caching partially read packets. Pooled in readCachePool
 
 	state   packet.State
 	handler Handler
 
 	remote *Conn
+	// Closer is called when the connection is closed.
+	// Kite guarantees that it will be called, so it may be used for necessary cleanup.
+	Closer func()
 }
 
 func NewConn(direction packet.Direction, conn net.Conn) (*Conn, func()) {
@@ -66,14 +70,11 @@ func NewConn(direction packet.Direction, conn net.Conn) (*Conn, func()) {
 		writer: conn,
 		wlock:  sync.Mutex{},
 
-		id: idCounter,
-
 		state:   packet.Handshake,
 		handler: nil,
 
 		readBuffer: make([]byte, 1024*1024*4),
 	}
-	idCounter++
 	//todo weird to return readLoop, not a big fan.
 	return c, c.readLoop
 }
@@ -85,6 +86,10 @@ func (c *Conn) Close() {
 
 	c.closed = true
 	c.delegate.Close()
+	if c.Closer != nil {
+		c.Closer()
+	}
+
 	if c.remote != nil {
 		c.remote.Close()
 	}
@@ -172,14 +177,18 @@ func (c *Conn) EnableEncryption(sharedSecret []byte) error {
 func (c *Conn) readLoop() {
 	defer func() {
 		if r := recover(); r != nil {
-			println(fmt.Sprintf("panic in readLoop: %v\n%s", r, string(debug.Stack())))
-			c.Close()
+			println(fmt.Sprintf("panic in readLoop: %v\n", r))
+			debug.PrintStack()
+			if c != nil {
+				c.Close()
+			}
 		}
 	}()
 	for {
 		var start int
 		if c.cacheBuffer != nil {
-			start = copy(c.readBuffer, c.cacheBuffer)
+			start = copy(c.readBuffer, c.cacheBuffer.B)
+			readCachePool.Put(c.cacheBuffer)
 			c.cacheBuffer = nil
 		}
 
@@ -192,7 +201,10 @@ func (c *Conn) readLoop() {
 				return
 			}
 
-			c.cacheBuffer = buffer.AllocRemainder()
+			if buffer.Remaining() > 0 {
+				c.cacheBuffer = readCachePool.Get()
+				buffer.AllocRemainderTo(c.cacheBuffer)
+			}
 		}
 		if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
 			return
@@ -220,8 +232,12 @@ func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
 			return
 		}
 
-		// See comment on preConfigMaxPacketSize
-		if c.state <= packet.Login && length > preConfigMaxPacketSize {
+		// See comment on maxPacketSizePreConfig
+		if length > maxPacketSize {
+			//todo this should disconnect with a message most likely.
+			c.Close()
+			return
+		} else if c.state <= packet.Login && length > maxPacketSizePreConfig {
 			c.Close()
 			return
 		}
@@ -259,7 +275,7 @@ func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
 					panic(err)
 				}
 			} else if err != nil {
-				println(fmt.Errorf("packet processing failed on %d: %w (%s/%s/%d)", c.id, err, c.direction.String(), c.state.String(), packetID).Error())
+				println(fmt.Errorf("packet processing failed: %w (%s/%s/%d)", err, c.direction.String(), c.state.String(), packetID).Error())
 				c.Close()
 				return
 			}
