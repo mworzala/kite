@@ -30,6 +30,7 @@ func (h *ClientConfigHandler[T]) HandlePacket(pp proto.Packet) (err error) {
 		}
 		return h.HandleFinishConfiguration(p)
 	default:
+		println("unhandled config packet from client", pp.Id)
 		return proto.Forward
 	}
 }
@@ -39,6 +40,7 @@ func (h *ClientConfigHandler[T]) HandlePluginMessage(p *packet.ClientPluginMessa
 }
 
 func (h *ClientConfigHandler[T]) HandleFinishConfiguration(_ *packet.ClientConfigFinishConfiguration) error {
+	println("client moving to play")
 	if h.PlayHandlerFunc != nil {
 		h.Player.SetState(packet.Play, h.PlayHandlerFunc(h.Player))
 	} else {

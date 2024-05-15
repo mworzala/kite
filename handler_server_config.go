@@ -33,14 +33,17 @@ func (h *ServerConfigHandler[T]) HandlePacket(pp proto.Packet) (err error) {
 		}
 		return h.HandlePluginMessage(p)
 	case packet.ServerConfigFinishConfigurationID:
+		println("server moving to play")
 		if h.PlayHandlerFunc != nil {
 			h.Player.Server().SetState(packet.Play, h.PlayHandlerFunc(h.Player))
 		} else {
 			h.Player.Server().SetState(packet.Play, NewServerPlayHandler(h.Player))
 		}
 		return proto.Forward
+	default:
+		println("unhandled config packet from server", pp.Id)
+		return proto.Forward
 	}
-	return proto.Forward
 }
 
 func (h *ServerConfigHandler[T]) HandlePluginMessage(p *packet.ClientPluginMessage) error {
