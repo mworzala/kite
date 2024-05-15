@@ -86,7 +86,7 @@ func (p *ClientPluginMessage) ID(state State) int {
 }
 
 func (p *ClientPluginMessage) Read(r io.Reader) (err error) {
-	if p.Channel, err = binary.ReadSizedString(r, nameLength); err != nil {
+	if p.Channel, err = binary.ReadString(r); err != nil {
 		return
 	}
 	if p.Data, err = binary.ReadRaw(r, binary.Remaining); err != nil {
@@ -96,7 +96,7 @@ func (p *ClientPluginMessage) Read(r io.Reader) (err error) {
 }
 
 func (p *ClientPluginMessage) Write(w io.Writer) (err error) {
-	if err = binary.WriteSizedString(w, p.Channel, 32767); err != nil {
+	if err = binary.WriteString(w, p.Channel); err != nil {
 		return //todo what actually is max length
 	}
 	if err = binary.WriteRaw(w, p.Data); err != nil {
