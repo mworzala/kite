@@ -27,7 +27,7 @@ func NewServerConfigHandler[T any](p *Player[T]) proto.Handler {
 func (h *ServerConfigHandler[T]) HandlePacket(pp proto.Packet) (err error) {
 	switch pp.Id {
 	case packet.ServerConfigPluginMessageID:
-		p := new(packet.ClientPluginMessage)
+		p := new(packet.ServerPluginMessage)
 		if err = pp.Read(p); err != nil {
 			return err
 		}
@@ -46,7 +46,7 @@ func (h *ServerConfigHandler[T]) HandlePacket(pp proto.Packet) (err error) {
 	}
 }
 
-func (h *ServerConfigHandler[T]) HandlePluginMessage(p *packet.ClientPluginMessage) error {
+func (h *ServerConfigHandler[T]) HandlePluginMessage(p *packet.ServerPluginMessage) error {
 	if p.Channel == "minecraft:brand" {
 		oldPayload := buffer2.NewPacketBuffer(p.Data)
 		oldBrand, err := binary.ReadSizedString(oldPayload, 32767)
