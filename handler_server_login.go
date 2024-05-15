@@ -91,6 +91,7 @@ func (h *ServerVelocityLoginHandler) handlePluginRequest(p *packet.ServerLoginPl
 		return err
 	}
 
+	println("responding to velocity forwarding request")
 	return h.remote.SendPacket(&packet.ClientLoginPluginResponse{
 		MessageID: p.MessageID,
 		Data:      forward,
@@ -104,6 +105,7 @@ func (h *ServerVelocityLoginHandler) handleLoginSuccess(p *packet.ServerLoginSuc
 	}
 
 	// Yay! We are connected to the remote server
+	println("login success")
 	h.complete(nil)
 	return nil
 }

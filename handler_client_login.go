@@ -147,6 +147,7 @@ func (h *ClientMojangLoginHandler[T]) HandleEncryptionResponse(p *packet.ClientE
 	targetServer := h.InitialServerFunc()
 	var ctx context.Context
 	ctx, h.remoteCancel = context.WithTimeout(context.Background(), 30*time.Second)
+	println("connecting to", targetServer.Address)
 	h.remoteCtx, h.remote, err = proto.CreateServerConn(ctx, targetServer.Address, uint16(targetServer.Port),
 		h.Player.Profile, targetServer.Secret, NewServerVelocityLoginHandler)
 	if err != nil {
@@ -170,6 +171,7 @@ func (h *ClientMojangLoginHandler[T]) HandleLoginAcknowledged(_ *packet.ClientLo
 	defer h.remoteCancel()
 
 	// Wait for the remote server connection (in fail or success)
+	println("waiting for remote login")
 	<-h.remoteCtx.Done()
 	cause := context.Cause(h.remoteCtx)
 	if errors.Is(cause, context.DeadlineExceeded) {

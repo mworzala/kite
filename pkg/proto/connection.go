@@ -79,6 +79,10 @@ func NewConn(direction packet.Direction, conn net.Conn) (*Conn, func()) {
 	return c, c.readLoop
 }
 
+func (c *Conn) RemoteAddr() net.Addr {
+	return c.delegate.RemoteAddr()
+}
+
 func (c *Conn) Close() {
 	if c == nil || c.closed {
 		return
