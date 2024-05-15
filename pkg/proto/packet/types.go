@@ -42,7 +42,7 @@ func (p *GameProfile) Read(r io.Reader) (err error) {
 	if p.UUID, err = binary.ReadUUID(r); err != nil {
 		return
 	}
-	if p.Username, err = binary.ReadSizedString(r, 16); err != nil {
+	if p.Username, err = binary.ReadString(r); err != nil {
 		return
 	}
 	if p.Properties, err = binary.ReadCollection(r, (*ProfileProperty).Read); err != nil {
@@ -55,7 +55,7 @@ func (p *GameProfile) Write(w io.Writer) (err error) {
 	if err = binary.WriteUUID(w, p.UUID); err != nil {
 		return
 	}
-	if err = binary.WriteSizedString(w, p.Username, 16); err != nil {
+	if err = binary.WriteString(w, p.Username); err != nil {
 		return
 	}
 	if err = binary.WriteCollection(w, p.Properties, (*ProfileProperty).Write); err != nil {
