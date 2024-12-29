@@ -4,9 +4,56 @@ import (
 	"io"
 )
 
-// InvalidState is the representation of a case where there is no valid ID for the packet in the given state.
-// For example, a client login start packet during the play state.
-const InvalidState = -1
+type Direction int
+
+const (
+	Clientbound Direction = iota
+	Serverbound
+)
+
+func (d Direction) String() string {
+	switch d {
+	case Clientbound:
+		return "clientbound"
+	case Serverbound:
+		return "serverbound"
+	}
+	return "unknown"
+}
+
+type State int
+
+const (
+	Handshake State = iota
+	Status
+	Login
+	Config
+	Play
+
+	// InvalidState is the representation of a case where there is no valid ID for the packet in the given state.
+	// For example, a client login start packet during the play state.
+	InvalidState = -1
+)
+
+func (s State) Validate() bool {
+	return s >= Handshake && s <= Play
+}
+
+func (s State) String() string {
+	switch s {
+	case Handshake:
+		return "handshake"
+	case Status:
+		return "status"
+	case Login:
+		return "login"
+	case Config:
+		return "config"
+	case Play:
+		return "play"
+	}
+	return "unknown"
+}
 
 // A Packet is a generic interface for both client and server packets.
 // The only required structure is that they have an ID in a game state (could be implemented by custom packets).

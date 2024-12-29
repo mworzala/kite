@@ -6,45 +6,6 @@ import (
 	"github.com/mworzala/kite/pkg/proto/binary"
 )
 
-type ResourcePackStatus int
-
-const (
-	ResourcePackSuccessfullyLoaded ResourcePackStatus = iota
-	ResourcePackDeclined
-	ResourcePackFailedDownload
-	ResourcePackAccepted
-	ResourcePackDownloaded
-	ResourcePackInvalidURL
-	ResourcePackFailedReload
-	ResourcePackDiscarded
-)
-
-func (s ResourcePackStatus) Validate() bool {
-	return s >= ResourcePackSuccessfullyLoaded && s <= ResourcePackDiscarded
-}
-
-func (s ResourcePackStatus) String() string {
-	switch s {
-	case ResourcePackSuccessfullyLoaded:
-		return "successfully_loaded"
-	case ResourcePackDeclined:
-		return "declined"
-	case ResourcePackFailedDownload:
-		return "failed_download"
-	case ResourcePackAccepted:
-		return "accepted"
-	case ResourcePackDownloaded:
-		return "downloaded"
-	case ResourcePackInvalidURL:
-		return "invalid_url"
-	case ResourcePackFailedReload:
-		return "failed_reload"
-	case ResourcePackDiscarded:
-		return "discarded"
-	}
-	return "unknown"
-}
-
 type ClientResourcePackStatus struct {
 	UUID   string
 	Status ResourcePackStatus
@@ -54,7 +15,6 @@ func (p *ClientResourcePackStatus) Direction() Direction { return Serverbound }
 func (p *ClientResourcePackStatus) ID(state State) int {
 	return stateId2(state, Config, Play, ClientConfigResourcePackResponseID, ClientPlayResourcePackStatusID)
 }
-
 func (p *ClientResourcePackStatus) Read(r io.Reader) (err error) {
 	if p.UUID, err = binary.ReadString(r); err != nil {
 		return
@@ -64,7 +24,6 @@ func (p *ClientResourcePackStatus) Read(r io.Reader) (err error) {
 	}
 	return nil
 }
-
 func (p *ClientResourcePackStatus) Write(w io.Writer) (err error) {
 	if err = binary.WriteString(w, p.UUID); err != nil {
 		return
@@ -84,7 +43,6 @@ func (p *ClientPluginMessage) Direction() Direction { return Serverbound }
 func (p *ClientPluginMessage) ID(state State) int {
 	return stateId2(state, Config, Play, ClientConfigPluginMessageID, ClientPlayPluginMessageID)
 }
-
 func (p *ClientPluginMessage) Read(r io.Reader) (err error) {
 	if p.Channel, err = binary.ReadString(r); err != nil {
 		return
@@ -94,7 +52,6 @@ func (p *ClientPluginMessage) Read(r io.Reader) (err error) {
 	}
 	return nil
 }
-
 func (p *ClientPluginMessage) Write(w io.Writer) (err error) {
 	if err = binary.WriteString(w, p.Channel); err != nil {
 		return //todo what actually is max length
@@ -117,7 +74,6 @@ func (p *ServerResourcePackPush) Direction() Direction { return Clientbound }
 func (p *ServerResourcePackPush) ID(state State) int {
 	return stateId2(state, Config, Play, ServerConfigAddResourcePackID, ServerPlayResourcePackPushID)
 }
-
 func (p *ServerResourcePackPush) Read(r io.Reader) (err error) {
 	if p.Id, err = binary.ReadString(r); err != nil {
 		return
@@ -140,7 +96,6 @@ func (p *ServerResourcePackPush) Read(r io.Reader) (err error) {
 	}
 	return nil
 }
-
 func (p *ServerResourcePackPush) Write(w io.Writer) (err error) {
 	if err = binary.WriteString(w, p.Id); err != nil {
 		return
@@ -168,14 +123,12 @@ func (p *ServerResourcePackPop) Direction() Direction { return Clientbound }
 func (p *ServerResourcePackPop) ID(state State) int {
 	return stateId2(state, Config, Play, ServerConfigRemoveResourcePackID, ServerPlayResourcePackPopID)
 }
-
 func (p *ServerResourcePackPop) Read(r io.Reader) (err error) {
 	if p.Id, err = binary.ReadOptionalFunc(r, binary.ReadUUID); err != nil {
 		return
 	}
 	return nil
 }
-
 func (p *ServerResourcePackPop) Write(w io.Writer) (err error) {
 	if err = binary.WriteOptionalFunc(w, p.Id, binary.WriteUUID); err != nil {
 		return
@@ -192,7 +145,6 @@ func (p *ServerPluginMessage) Direction() Direction { return Clientbound }
 func (p *ServerPluginMessage) ID(state State) int {
 	return stateId2(state, Config, Play, ServerConfigPluginMessageID, ServerPlayPluginMessageID)
 }
-
 func (p *ServerPluginMessage) Read(r io.Reader) (err error) {
 	if p.Channel, err = binary.ReadString(r); err != nil {
 		return
@@ -202,7 +154,6 @@ func (p *ServerPluginMessage) Read(r io.Reader) (err error) {
 	}
 	return nil
 }
-
 func (p *ServerPluginMessage) Write(w io.Writer) (err error) {
 	if err = binary.WriteSizedString(w, p.Channel, 32767); err != nil {
 		return //todo what actually is max length

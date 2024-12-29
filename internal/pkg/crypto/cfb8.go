@@ -6,6 +6,11 @@ import (
 	"unsafe"
 )
 
+// Implements CFB8 block cipher mode of operation used by Minecraft protocol.
+//
+// Taken from go-mc, under the MIT license.
+// https://github.com/Tnze/go-mc/blob/master/net/CFB8/cfb8.go
+
 type CFB8 struct {
 	c         cipher.Block
 	blockSize int

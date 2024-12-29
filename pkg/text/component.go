@@ -1,8 +1,5 @@
-package component
+package text
 
 type Component interface {
 	component() // Marker method
-}
-
-type Style struct {
 }

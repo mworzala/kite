@@ -23,6 +23,7 @@ func NewPacketBuffer(delegate []byte) *PacketBuffer {
 	}
 }
 
+// Read implements the io.Reader interface
 func (p2 *PacketBuffer) Read(p []byte) (n int, err error) {
 	if p2.position+len(p) > p2.limit {
 		return 0, ErrBufferOverflow

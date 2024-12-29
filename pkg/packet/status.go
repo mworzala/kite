@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"encoding/json"
 	"io"
 
 	"github.com/mworzala/kite/pkg/proto/binary"
@@ -51,22 +52,42 @@ const (
 	ServerStatusPingResponseID
 )
 
-type ServerStatusResponse struct {
-	Payload StatusResponse
-}
+type (
+	ServerStatusResponse struct {
+		Payload StatusResponse
+	}
+	StatusResponse struct {
+		Version           ServerVersion    `json:"version"`
+		Players           ServerPlayerList `json:"players"`
+		Description       json.RawMessage  `json:"description"` //todo this is a text component
+		Favicon           string           `json:"favicon"`
+		EnforceSecureChat bool             `json:"enforcesSecureChat"`
+	}
+	ServerVersion struct {
+		Name     string `json:"name"`
+		Protocol int    `json:"protocol"`
+	}
+	ServerPlayerList struct {
+		Max    int             `json:"max"`
+		Online int             `json:"online"`
+		Sample []*ServerPlayer `json:"sample"`
+	}
+	ServerPlayer struct {
+		Name string `json:"name"`
+		ID   string `json:"id"`
+	}
+)
 
 func (p *ServerStatusResponse) Direction() Direction { return Clientbound }
 func (p *ServerStatusResponse) ID(state State) int {
 	return stateId1(state, Status, ServerStatusStatusResponseID)
 }
-
 func (p *ServerStatusResponse) Read(r io.Reader) (err error) {
 	if p.Payload, err = binary.ReadTypedJSON[StatusResponse](r); err != nil {
 		return
 	}
 	return
 }
-
 func (p *ServerStatusResponse) Write(w io.Writer) (err error) {
 	if err = binary.WriteTypedJSON(w, p.Payload); err != nil {
 		return
@@ -82,14 +103,12 @@ func (p *ServerStatusPingResponse) Direction() Direction { return Clientbound }
 func (p *ServerStatusPingResponse) ID(state State) int {
 	return stateId1(state, Status, ServerStatusPingResponseID)
 }
-
 func (p *ServerStatusPingResponse) Read(r io.Reader) (err error) {
 	if p.Payload, err = binary.ReadLong(r); err != nil {
 		return
 	}
 	return nil
 }
-
 func (p *ServerStatusPingResponse) Write(w io.Writer) (err error) {
 	if err = binary.WriteLong(w, p.Payload); err != nil {
 		return

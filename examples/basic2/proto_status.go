@@ -3,8 +3,8 @@ package main
 import (
 	"encoding/json"
 
+	"github.com/mworzala/kite/pkg/packet"
 	"github.com/mworzala/kite/pkg/proto"
-	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
 func (p *Player) handleClientStatusPacket(pp proto.Packet) (err error) {

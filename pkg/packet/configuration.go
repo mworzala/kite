@@ -21,12 +21,10 @@ func (p *ClientConfigFinishConfiguration) Direction() Direction { return Serverb
 func (p *ClientConfigFinishConfiguration) ID(state State) int {
 	return stateId1(state, Config, ClientConfigFinishConfigurationID)
 }
-
-func (p *ClientConfigFinishConfiguration) Read(r io.Reader) (err error) {
+func (p *ClientConfigFinishConfiguration) Read(_ io.Reader) (err error) {
 	return nil
 }
-
-func (p *ClientConfigFinishConfiguration) Write(w io.Writer) (err error) {
+func (p *ClientConfigFinishConfiguration) Write(_ io.Writer) (err error) {
 	return nil
 }
 
@@ -47,10 +45,6 @@ const (
 	ServerConfigUpdateTagsID
 	ServerConfigKnownPacksID
 )
-
-type ServerConfigDisconnect struct {
-	//todo nbt
-}
 
 var (
 	_ Packet = (*ClientConfigFinishConfiguration)(nil)

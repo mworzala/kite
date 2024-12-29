@@ -5,19 +5,18 @@ import (
 	"fmt"
 
 	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
+	packet2 "github.com/mworzala/kite/pkg/packet"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/binary"
-	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
 func (p *Player) handleClientConfigPacket(pp proto.Packet) (err error) {
 	if p.remote == nil {
 		panic("bad state")
 	}
-	println("client config packet", pp.Id)
 	switch pp.Id {
-	case packet.ClientConfigFinishConfigurationID:
-		pkt := new(packet.ClientConfigFinishConfiguration)
+	case packet2.ClientConfigFinishConfigurationID:
+		pkt := new(packet2.ClientConfigFinishConfiguration)
 		if err = pp.Read(pkt); err != nil {
 			return
 		}
@@ -27,32 +26,30 @@ func (p *Player) handleClientConfigPacket(pp proto.Packet) (err error) {
 	}
 }
 
-func (p *Player) handleClientConfigFinishConfiguration(pkt *packet.ClientConfigFinishConfiguration) (err error) {
-	println("client moving to play")
-	p.remote.SetState(packet.Play)
-	return p.remote.SendPacket(pkt)
+func (p *Player) handleClientConfigFinishConfiguration(pkt *packet2.ClientConfigFinishConfiguration) (err error) {
+	err = p.remote.SendPacket(pkt)
+	p.conn.SetState(packet2.Play)
+	p.remote.SetState(packet2.Play)
+	return
 }
 
 func (p *Player) handleServerConfigPacket(pp proto.Packet) (err error) {
-	println("server config packet", pp.Id)
 	switch pp.Id {
-	case packet.ServerConfigPluginMessageID:
-		pkt := new(packet.ServerPluginMessage)
+	case packet2.ServerConfigPluginMessageID:
+		pkt := new(packet2.ServerPluginMessage)
 		if err = pp.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleServerPluginMessage(pkt)
-	case packet.ServerConfigFinishConfigurationID:
-		//todo make actual handler
-		println("server moving to play")
-		p.conn.SetState(packet.Play)
+	case packet2.ServerConfigFinishConfigurationID:
+		// Don't need to do anything, just being explicit
 		return p.conn.ForwardPacket(pp)
 	default:
 		return p.conn.ForwardPacket(pp)
 	}
 }
 
-func (p *Player) handleServerPluginMessage(pkt *packet.ServerPluginMessage) (err error) {
+func (p *Player) handleServerPluginMessage(pkt *packet2.ServerPluginMessage) (err error) {
 	if pkt.Channel == "minecraft:brand" {
 		oldPayload := buffer2.NewPacketBuffer(pkt.Data)
 		oldBrand, err := binary.ReadSizedString(oldPayload, 32767)
@@ -66,7 +63,7 @@ func (p *Player) handleServerPluginMessage(pkt *packet.ServerPluginMessage) (err
 			return err
 		}
 
-		resp := &packet.ServerPluginMessage{
+		resp := &packet2.ServerPluginMessage{
 			Channel: "minecraft:brand",
 			Data:    newPayload.Bytes(),
 		}

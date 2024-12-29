@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/google/uuid"
 	"github.com/mworzala/kite"
+	packet2 "github.com/mworzala/kite/pkg/packet"
 	"github.com/mworzala/kite/pkg/proto"
-	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
 type Player struct {
@@ -13,7 +13,7 @@ type Player struct {
 
 	UUID     uuid.UUID
 	Username string
-	Profile  *packet.GameProfile
+	Profile  *packet2.GameProfile
 
 	pendingLoginChan chan error
 	remote           *kite.Conn
@@ -27,15 +27,15 @@ func (p *Player) Disconnect(reason string) {
 
 func (p *Player) handleClientPacket(pp proto.Packet) error {
 	switch pp.State {
-	case packet.Handshake:
+	case packet2.Handshake:
 		return p.handleClientHandshakePacket(pp)
-	case packet.Status:
+	case packet2.Status:
 		return p.handleClientStatusPacket(pp)
-	case packet.Login:
+	case packet2.Login:
 		return p.handleClientLoginPacket(pp)
-	case packet.Config:
+	case packet2.Config:
 		return p.handleClientConfigPacket(pp)
-	case packet.Play:
+	case packet2.Play:
 		if p.remote == nil {
 			panic("bad state")
 		}
@@ -49,11 +49,11 @@ func (p *Player) handleClientPacket(pp proto.Packet) error {
 
 func (p *Player) handleServerPacket(pp proto.Packet) error {
 	switch pp.State {
-	case packet.Login:
+	case packet2.Login:
 		return p.handleServerLoginPacket(pp)
-	case packet.Config:
+	case packet2.Config:
 		return p.handleServerConfigPacket(pp)
-	case packet.Play:
+	case packet2.Play:
 		return p.conn.ForwardPacket(pp)
 	default:
 		return proto.UnknownPacket

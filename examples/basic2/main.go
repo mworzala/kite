@@ -13,7 +13,7 @@ import (
 	"os/signal"
 
 	"github.com/mworzala/kite"
-	"github.com/mworzala/kite/pkg/proto/packet"
+	"github.com/mworzala/kite/pkg/packet"
 )
 
 func main() {

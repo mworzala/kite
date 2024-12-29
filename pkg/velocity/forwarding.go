@@ -5,8 +5,8 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 
+	"github.com/mworzala/kite/pkg/packet"
 	"github.com/mworzala/kite/pkg/proto/binary"
-	"github.com/mworzala/kite/pkg/proto/packet"
 )
 
 const (
@@ -15,7 +15,7 @@ const (
 	expectedBufferSize = 2048
 )
 
-func CreateSignedForwardingData(secret []byte, profile *packet.GameProfile, requestVersion int) (result []byte, err error) {
+func CreateSignedForwardingData(requestVersion int, secret []byte, address string, profile *packet.GameProfile) (result []byte, err error) {
 	mac := hmac.New(sha256.New, secret)
 
 	// Currently we only support version 1. I guess we should support the others (relevant >= 1.20.6) in the future.
@@ -29,7 +29,7 @@ func CreateSignedForwardingData(secret []byte, profile *packet.GameProfile, requ
 	if err = binary.WriteVarInt(buf, int32(version)); err != nil {
 		return
 	}
-	if err = binary.WriteString(buf, "127.0.0.1"); err != nil {
+	if err = binary.WriteString(buf, address); err != nil {
 		return
 	}
 	if err = profile.Write(buf); err != nil {

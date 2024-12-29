@@ -25,7 +25,6 @@ func (p *ClientLoginStart) Direction() Direction { return Serverbound }
 func (p *ClientLoginStart) ID(state State) int {
 	return stateId1(state, Login, ClientLoginLoginStartID)
 }
-
 func (p *ClientLoginStart) Read(r io.Reader) (err error) {
 	if p.Name, err = binary.ReadSizedString(r, nameLength); err != nil {
 		return
@@ -35,7 +34,6 @@ func (p *ClientLoginStart) Read(r io.Reader) (err error) {
 	}
 	return nil
 }
-
 func (p *ClientLoginStart) Write(w io.Writer) (err error) {
 	if err = binary.WriteSizedString(w, p.Name, nameLength); err != nil {
 		return
@@ -55,7 +53,6 @@ func (p *ClientEncryptionResponse) Direction() Direction { return Serverbound }
 func (p *ClientEncryptionResponse) ID(state State) int {
 	return stateId1(state, Login, ClientLoginEncryptionResponseID)
 }
-
 func (p *ClientEncryptionResponse) Read(r io.Reader) (err error) {
 	if p.SharedSecret, err = binary.ReadByteArray(r); err != nil {
 		return
@@ -65,7 +62,6 @@ func (p *ClientEncryptionResponse) Read(r io.Reader) (err error) {
 	}
 	return nil
 }
-
 func (p *ClientEncryptionResponse) Write(w io.Writer) (err error) {
 	if err = binary.WriteByteArray(w, p.SharedSecret); err != nil {
 		return
@@ -85,7 +81,6 @@ func (p *ClientLoginPluginResponse) Direction() Direction { return Serverbound }
 func (p *ClientLoginPluginResponse) ID(state State) int {
 	return stateId1(state, Login, ClientLoginPluginResponseID)
 }
-
 func (p *ClientLoginPluginResponse) Read(r io.Reader) (err error) {
 	if p.MessageID, err = binary.ReadVarInt(r); err != nil {
 		return
@@ -99,7 +94,6 @@ func (p *ClientLoginPluginResponse) Read(r io.Reader) (err error) {
 	}
 	return nil
 }
-
 func (p *ClientLoginPluginResponse) Write(w io.Writer) (err error) {
 	if err = binary.WriteVarInt(w, p.MessageID); err != nil {
 		return
@@ -144,14 +138,12 @@ func (p *ServerLoginDisconnect) Direction() Direction { return Clientbound }
 func (p *ServerLoginDisconnect) ID(state State) int {
 	return stateId1(state, Login, ServerLoginDisconnectID)
 }
-
 func (p *ServerLoginDisconnect) Read(r io.Reader) (err error) {
 	if p.Reason, err = binary.ReadChatString(r); err != nil {
 		return
 	}
 	return nil
 }
-
 func (p *ServerLoginDisconnect) Write(w io.Writer) (err error) {
 	if err = binary.WriteChatString(w, p.Reason); err != nil {
 		return
@@ -170,7 +162,6 @@ func (p *ServerEncryptionRequest) Direction() Direction { return Clientbound }
 func (p *ServerEncryptionRequest) ID(state State) int {
 	return stateId1(state, Login, ServerLoginEncryptionRequestID)
 }
-
 func (p *ServerEncryptionRequest) Read(r io.Reader) (err error) {
 	if p.ServerID, err = binary.ReadSizedString(r, 20); err != nil {
 		return
@@ -186,7 +177,6 @@ func (p *ServerEncryptionRequest) Read(r io.Reader) (err error) {
 	}
 	return nil
 }
-
 func (p *ServerEncryptionRequest) Write(w io.Writer) (err error) {
 	if err = binary.WriteSizedString(w, p.ServerID, 20); err != nil {
 		return
@@ -211,14 +201,12 @@ func (p *ServerLoginSuccess) Direction() Direction { return Clientbound }
 func (p *ServerLoginSuccess) ID(state State) int {
 	return stateId1(state, Login, ServerLoginLoginSuccessID)
 }
-
 func (p *ServerLoginSuccess) Read(r io.Reader) (err error) {
 	if err = p.GameProfile.Read(r); err != nil {
 		return
 	}
 	return nil
 }
-
 func (p *ServerLoginSuccess) Write(w io.Writer) (err error) {
 	if err = p.GameProfile.Write(w); err != nil {
 		return
@@ -236,7 +224,6 @@ func (p *ServerLoginPluginRequest) Direction() Direction { return Clientbound }
 func (p *ServerLoginPluginRequest) ID(state State) int {
 	return stateId1(state, Login, ServerLoginPluginRequestID)
 }
-
 func (p *ServerLoginPluginRequest) Read(r io.Reader) (err error) {
 	if p.MessageID, err = binary.ReadVarInt(r); err != nil {
 		return
@@ -249,7 +236,6 @@ func (p *ServerLoginPluginRequest) Read(r io.Reader) (err error) {
 	}
 	return nil
 }
-
 func (p *ServerLoginPluginRequest) Write(w io.Writer) (err error) {
 	if err = binary.WriteVarInt(w, p.MessageID); err != nil {
 		return

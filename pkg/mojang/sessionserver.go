@@ -1,4 +1,4 @@
-package sessionserver
+package mojang
 
 import (
 	"context"

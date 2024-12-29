@@ -13,9 +13,9 @@ import (
 
 	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
 	"github.com/mworzala/kite/internal/pkg/crypto"
+	"github.com/mworzala/kite/pkg/packet"
 	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/binary"
-	"github.com/mworzala/kite/pkg/proto/packet"
 	"github.com/valyala/bytebufferpool"
 )
 

@@ -1,36 +1,10 @@
 package packet
 
 import (
-	"encoding/json"
 	"io"
 
 	"github.com/mworzala/kite/pkg/proto/binary"
 )
-
-// An Intent is the target state when joining a server.
-type Intent int
-
-const (
-	IntentStatus = iota + 1
-	IntentLogin
-	IntentTransfer
-)
-
-func (s Intent) Validate() bool {
-	return s >= IntentStatus && s <= IntentTransfer
-}
-
-func (s Intent) String() string {
-	switch s {
-	case IntentStatus:
-		return "status"
-	case IntentLogin:
-		return "login"
-	case IntentTransfer:
-		return "transfer"
-	}
-	return "unknown"
-}
 
 type GameProfile struct {
 	UUID       string
@@ -96,26 +70,41 @@ func (p *ProfileProperty) Write(w io.Writer) (err error) {
 	return
 }
 
-type StatusResponse struct {
-	Version           ServerVersion    `json:"version"`
-	Players           ServerPlayerList `json:"players"`
-	Description       json.RawMessage  `json:"description"` //todo this is a text component
-	Favicon           string           `json:"favicon"`
-	EnforceSecureChat bool             `json:"enforcesSecureChat"`
+type ResourcePackStatus int
+
+const (
+	ResourcePackSuccessfullyLoaded ResourcePackStatus = iota
+	ResourcePackDeclined
+	ResourcePackFailedDownload
+	ResourcePackAccepted
+	ResourcePackDownloaded
+	ResourcePackInvalidURL
+	ResourcePackFailedReload
+	ResourcePackDiscarded
+)
+
+func (s ResourcePackStatus) Validate() bool {
+	return s >= ResourcePackSuccessfullyLoaded && s <= ResourcePackDiscarded
 }
 
-type ServerVersion struct {
-	Name     string `json:"name"`
-	Protocol int    `json:"protocol"`
-}
-
-type ServerPlayerList struct {
-	Max    int             `json:"max"`
-	Online int             `json:"online"`
-	Sample []*ServerPlayer `json:"sample"`
-}
-
-type ServerPlayer struct {
-	Name string `json:"name"`
-	ID   string `json:"id"`
+func (s ResourcePackStatus) String() string {
+	switch s {
+	case ResourcePackSuccessfullyLoaded:
+		return "successfully_loaded"
+	case ResourcePackDeclined:
+		return "declined"
+	case ResourcePackFailedDownload:
+		return "failed_download"
+	case ResourcePackAccepted:
+		return "accepted"
+	case ResourcePackDownloaded:
+		return "downloaded"
+	case ResourcePackInvalidURL:
+		return "invalid_url"
+	case ResourcePackFailedReload:
+		return "failed_reload"
+	case ResourcePackDiscarded:
+		return "discarded"
+	}
+	return "unknown"
 }
