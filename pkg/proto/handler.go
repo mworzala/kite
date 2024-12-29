@@ -2,8 +2,8 @@ package proto
 
 import (
 	"errors"
-	"io"
 
+	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
 	"github.com/mworzala/kite/pkg/proto/binary"
 	"github.com/mworzala/kite/pkg/proto/packet"
 )
@@ -29,23 +29,25 @@ type Handler interface {
 type ConnHandlerFunc func(*Conn) Handler
 
 type Packet struct {
-	Id   int32
-	buf  io.Reader
-	read bool
+	State        packet.State
+	Id           int32
+	Buf          *buffer2.PacketBuffer
+	Start        int
+	ReadInternal bool
 }
 
 // Consume marks the entire content of the buffer as read.
 //
 // This is pretty much to require explicit consumption of an unused packet.
 func (p Packet) Consume() {
-	_, _ = binary.ReadRaw(p.buf, binary.Remaining)
-	p.read = true
+	_, _ = binary.ReadRaw(p.Buf, binary.Remaining)
+	p.ReadInternal = true
 }
 
 func (p Packet) Read(t packet.Packet) error {
-	if p.read {
+	if p.ReadInternal {
 		return errors.New("packet already read")
 	}
-	p.read = true
-	return t.Read(p.buf)
+	p.ReadInternal = true
+	return t.Read(p.Buf)
 }

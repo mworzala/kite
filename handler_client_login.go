@@ -155,8 +155,7 @@ func (h *ClientMojangLoginHandler[T]) HandleEncryptionResponse(p *packet.ClientE
 	}
 
 	return h.Player.SendPacket(&packet.ServerLoginSuccess{
-		GameProfile:         *h.Player.Profile,
-		StrictErrorHandling: true,
+		GameProfile: *h.Player.Profile,
 	})
 }
 

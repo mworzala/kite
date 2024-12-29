@@ -205,7 +205,6 @@ func (p *ServerEncryptionRequest) Write(w io.Writer) (err error) {
 
 type ServerLoginSuccess struct {
 	GameProfile
-	StrictErrorHandling bool
 }
 
 func (p *ServerLoginSuccess) Direction() Direction { return Clientbound }
@@ -217,17 +216,11 @@ func (p *ServerLoginSuccess) Read(r io.Reader) (err error) {
 	if err = p.GameProfile.Read(r); err != nil {
 		return
 	}
-	if p.StrictErrorHandling, err = binary.ReadBool(r); err != nil {
-		return
-	}
 	return nil
 }
 
 func (p *ServerLoginSuccess) Write(w io.Writer) (err error) {
 	if err = p.GameProfile.Write(w); err != nil {
-		return
-	}
-	if err = binary.WriteBool(w, p.StrictErrorHandling); err != nil {
 		return
 	}
 	return nil

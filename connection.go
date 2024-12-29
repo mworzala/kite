@@ -1,4 +1,4 @@
-package proto
+package kite
 
 import (
 	"crypto/aes"
@@ -13,6 +13,7 @@ import (
 
 	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
 	"github.com/mworzala/kite/internal/pkg/crypto"
+	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/proto/binary"
 	"github.com/mworzala/kite/pkg/proto/packet"
 	"github.com/valyala/bytebufferpool"
@@ -32,20 +33,15 @@ var (
 	readCachePool bytebufferpool.Pool
 )
 
-// A Conn is a connection that can send and process packets.
-// Typically, a Conn exists for both the client<>proxy and proxy<>server connections.
-// When connecting to a new server, a new Conn will be created before the old one is closed.
-//
-// A Handler is used to process packets received by the Conn.
-//
-// A Conn should be informed of the remote connection to allow packet forwarding.
+// A Conn represents a connection to a Minecraft server or client. It wraps the
+// underlying net.Conn and provides utilities for processing and writing packets.
 type Conn struct {
 	direction packet.Direction
 	delegate  net.Conn
 	closed    bool
 
+	// reader and writer should be used instead of directly accessing the delegate.
 	reader io.Reader
-	// writer protected by wlock
 	writer io.Writer
 	wlock  sync.Mutex
 
@@ -53,15 +49,13 @@ type Conn struct {
 	cacheBuffer *bytebufferpool.ByteBuffer // Used for caching partially read packets. Pooled in readCachePool
 
 	state   packet.State
-	handler Handler
-
-	remote *Conn
-	// Closer is called when the connection is closed.
-	// Kite guarantees that it will be called, so it may be used for necessary cleanup.
-	Closer func()
+	handler func(pp proto.Packet) error
 }
 
-func NewConn(direction packet.Direction, conn net.Conn) (*Conn, func()) {
+func NewConn(direction packet.Direction, conn net.Conn, handler func(pp proto.Packet) error) *Conn {
+	if handler == nil {
+		panic("handler must not be nil")
+	}
 	c := &Conn{
 		direction: direction,
 		delegate:  conn,
@@ -70,13 +64,13 @@ func NewConn(direction packet.Direction, conn net.Conn) (*Conn, func()) {
 		writer: conn,
 		wlock:  sync.Mutex{},
 
-		state:   packet.Handshake,
-		handler: nil,
-
+		// TODO: don't always allocate 4mb
 		readBuffer: make([]byte, 1024*1024*4),
+
+		state:   packet.Handshake,
+		handler: handler,
 	}
-	//todo weird to return readLoop, not a big fan.
-	return c, c.readLoop
+	return c
 }
 
 func (c *Conn) RemoteAddr() net.Addr {
@@ -90,19 +84,36 @@ func (c *Conn) Close() {
 
 	c.closed = true
 	c.delegate.Close()
-	if c.Closer != nil {
-		c.Closer()
-	}
-
-	if c.remote != nil {
-		c.remote.Close()
-	}
 }
 
-func (c *Conn) SetState(state packet.State, handler Handler) {
-	//println(fmt.Sprintf("setting %s state to %s", c.direction.String(), state.String()))
+func (c *Conn) SetState(state packet.State) {
 	c.state = state
-	c.handler = handler
+}
+
+func (c *Conn) EnableEncryption(sharedSecret []byte) error {
+	block, err := aes.NewCipher(sharedSecret)
+	if err != nil {
+		return err
+	}
+
+	cfb := crypto.NewCFB8Decrypt(block, sharedSecret)
+	c.reader = &cipher.StreamReader{S: cfb, R: c.reader}
+
+	cfb = crypto.NewCFB8Encrypt(block, sharedSecret)
+	c.writer = &cipher.StreamWriter{S: cfb, W: c.writer}
+
+	return nil
+}
+
+func (c *Conn) ForwardPacket(pp proto.Packet) (err error) {
+	// Write the raw packet to the remote
+	pp.Buf.Reset(pp.Start)
+	_, err = c.writer.Write(pp.Buf.RemainingSlice())
+	if errors.Is(err, syscall.EPIPE) || errors.Is(err, net.ErrClosed) {
+		c.Close()
+		return
+	}
+	return err
 }
 
 func (c *Conn) SendPacket(pkt packet.Packet) (err error) {
@@ -155,30 +166,7 @@ func (c *Conn) writePacketSync(buffer []byte) (err error) {
 	return nil
 }
 
-func (c *Conn) GetRemote() *Conn {
-	return c.remote
-}
-
-func (c *Conn) SetRemote(remote *Conn) {
-	c.remote = remote
-}
-
-func (c *Conn) EnableEncryption(sharedSecret []byte) error {
-	block, err := aes.NewCipher(sharedSecret)
-	if err != nil {
-		return err
-	}
-
-	cfb := crypto.NewCFB8Decrypt(block, sharedSecret)
-	c.reader = &cipher.StreamReader{S: cfb, R: c.reader}
-
-	cfb = crypto.NewCFB8Encrypt(block, sharedSecret)
-	c.writer = &cipher.StreamWriter{S: cfb, W: c.writer}
-
-	return nil
-}
-
-func (c *Conn) readLoop() {
+func (c *Conn) ReadLoop() {
 	defer func() {
 		if r := recover(); r != nil {
 			println(fmt.Sprintf("panic in readLoop: %v\n", r))
@@ -211,8 +199,10 @@ func (c *Conn) readLoop() {
 			}
 		}
 		if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
+			c.Close()
 			return
 		} else if err != nil {
+			//todo handle appropriately and close connection.
 			panic(err)
 		}
 	}
@@ -262,29 +252,12 @@ func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
 			panic(err)
 		}
 
-		if c.handler != nil {
-			err = c.handler.HandlePacket(Packet{Id: packetID, Buf: buffer})
-			if errors.Is(err, Forward) {
-				if c.remote == nil {
-					panic("no remote")
-				}
-
-				// Write the raw packet to the remote
-				buffer.Reset(packetStart)
-				_, err = c.remote.writer.Write(buffer.RemainingSlice())
-				if errors.Is(err, syscall.EPIPE) || errors.Is(err, net.ErrClosed) {
-					c.Close()
-					return
-				} else if err != nil {
-					panic(err)
-				}
-			} else if err != nil {
-				println(fmt.Errorf("packet processing failed: %w (%s/%s/%d)", err, c.direction.String(), c.state.String(), packetID).Error())
-				c.Close()
-				return
-			}
+		err = c.handler(proto.Packet{State: c.state, Id: packetID, Buf: buffer, ReadInternal: false, Start: packetStart})
+		if err != nil {
+			println(fmt.Errorf("packet processing failed: %w (%s/%s/%d)", err, c.direction.String(), c.state.String(), packetID).Error())
+			c.Close()
+			return
 		}
-
 		if buffer.Remaining() > 0 {
 			panic(fmt.Errorf("%s: %s/%s/%d", "packet not fully read", c.direction.String(), c.state.String(), packetID))
 		}
