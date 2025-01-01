@@ -3,7 +3,7 @@ package packet
 import (
 	"io"
 
-	"github.com/mworzala/kite/pkg/proto/binary"
+	"github.com/mworzala/kite/pkg/buffer"
 )
 
 const ClientHandshakeHandshakeID = 0x00
@@ -15,41 +15,19 @@ type ClientHandshake struct {
 	Intent          Intent
 }
 
-const serverAddressLength = 255
-
 func (p *ClientHandshake) Direction() Direction { return Serverbound }
 func (p *ClientHandshake) ID(state State) int {
 	return stateId1(state, Handshake, ClientHandshakeHandshakeID)
 }
 func (p *ClientHandshake) Read(r io.Reader) (err error) {
-	if p.ProtocolVersion, err = binary.ReadVarInt(r); err != nil {
-		return
-	}
-	if p.ServerAddress, err = binary.ReadSizedString(r, serverAddressLength); err != nil {
-		return
-	}
-	if p.ServerPort, err = binary.ReadUShort(r); err != nil {
-		return
-	}
-	if p.Intent, err = binary.ReadEnum[Intent](r); err != nil {
-		return
-	}
-	return nil
+	p.ProtocolVersion, p.ServerAddress, p.ServerPort, p.Intent, err = buffer.Read4(r,
+		buffer.VarInt, buffer.String, buffer.Uint16, buffer.Enum[Intent]{})
+	return
 }
 func (p *ClientHandshake) Write(w io.Writer) (err error) {
-	if err = binary.WriteVarInt(w, p.ProtocolVersion); err != nil {
-		return
-	}
-	if err = binary.WriteSizedString(w, p.ServerAddress, serverAddressLength); err != nil {
-		return
-	}
-	if err = binary.WriteUShort(w, p.ServerPort); err != nil {
-		return
-	}
-	if err = binary.WriteEnum(w, p.Intent); err != nil {
-		return
-	}
-	return nil
+	return buffer.Write4(w,
+		buffer.VarInt, p.ProtocolVersion, buffer.String, p.ServerAddress,
+		buffer.Uint16, p.ServerPort, buffer.Enum[Intent]{}, p.Intent)
 }
 
 var _ Packet = (*ClientHandshake)(nil)

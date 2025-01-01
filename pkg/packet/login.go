@@ -3,7 +3,9 @@ package packet
 import (
 	"io"
 
-	"github.com/mworzala/kite/pkg/proto/binary"
+	"github.com/google/uuid"
+	"github.com/mworzala/kite/pkg/buffer"
+	"github.com/mworzala/kite/pkg/text"
 )
 
 const (
@@ -16,32 +18,19 @@ const (
 
 type ClientLoginStart struct {
 	Name string
-	UUID string
+	UUID uuid.UUID
 }
-
-const nameLength = 16
 
 func (p *ClientLoginStart) Direction() Direction { return Serverbound }
 func (p *ClientLoginStart) ID(state State) int {
 	return stateId1(state, Login, ClientLoginLoginStartID)
 }
 func (p *ClientLoginStart) Read(r io.Reader) (err error) {
-	if p.Name, err = binary.ReadSizedString(r, nameLength); err != nil {
-		return
-	}
-	if p.UUID, err = binary.ReadUUID(r); err != nil {
-		return
-	}
-	return nil
+	p.Name, p.UUID, err = buffer.Read2(r, buffer.String, buffer.UUID)
+	return
 }
 func (p *ClientLoginStart) Write(w io.Writer) (err error) {
-	if err = binary.WriteSizedString(w, p.Name, nameLength); err != nil {
-		return
-	}
-	if err = binary.WriteUUID(w, p.UUID); err != nil {
-		return
-	}
-	return nil
+	return buffer.Write2(w, buffer.String, p.Name, buffer.UUID, p.UUID)
 }
 
 type ClientEncryptionResponse struct {
@@ -54,22 +43,11 @@ func (p *ClientEncryptionResponse) ID(state State) int {
 	return stateId1(state, Login, ClientLoginEncryptionResponseID)
 }
 func (p *ClientEncryptionResponse) Read(r io.Reader) (err error) {
-	if p.SharedSecret, err = binary.ReadByteArray(r); err != nil {
-		return
-	}
-	if p.VerifyToken, err = binary.ReadByteArray(r); err != nil {
-		return
-	}
-	return nil
+	p.SharedSecret, p.VerifyToken, err = buffer.Read2(r, buffer.ByteArray, buffer.ByteArray)
+	return
 }
 func (p *ClientEncryptionResponse) Write(w io.Writer) (err error) {
-	if err = binary.WriteByteArray(w, p.SharedSecret); err != nil {
-		return
-	}
-	if err = binary.WriteByteArray(w, p.VerifyToken); err != nil {
-		return
-	}
-	return nil
+	return buffer.Write2(w, buffer.ByteArray, p.SharedSecret, buffer.ByteArray, p.VerifyToken)
 }
 
 type ClientLoginPluginResponse struct {
@@ -82,26 +60,26 @@ func (p *ClientLoginPluginResponse) ID(state State) int {
 	return stateId1(state, Login, ClientLoginPluginResponseID)
 }
 func (p *ClientLoginPluginResponse) Read(r io.Reader) (err error) {
-	if p.MessageID, err = binary.ReadVarInt(r); err != nil {
+	if p.MessageID, err = buffer.VarInt.Read(r); err != nil {
 		return
 	}
 	var successful bool
-	if successful, err = binary.ReadBool(r); err != nil || !successful {
+	if successful, err = buffer.Bool.Read(r); err != nil || !successful {
 		return
 	}
-	if p.Data, err = binary.ReadRaw(r, -1); err != nil {
+	if p.Data, err = buffer.RawBytes.Read(r); err != nil {
 		return
 	}
 	return nil
 }
 func (p *ClientLoginPluginResponse) Write(w io.Writer) (err error) {
-	if err = binary.WriteVarInt(w, p.MessageID); err != nil {
+	if err = buffer.VarInt.Write(w, p.MessageID); err != nil {
 		return
 	}
-	if err = binary.WriteBool(w, p.Data != nil); err != nil || p.Data == nil {
+	if err = buffer.Bool.Write(w, p.Data != nil); err != nil || p.Data == nil {
 		return
 	}
-	if err = binary.WriteRaw(w, p.Data); err != nil {
+	if err = buffer.RawBytes.Write(w, p.Data); err != nil {
 		return
 	}
 	return nil
@@ -114,10 +92,10 @@ func (p *ClientLoginAcknowledged) ID(state State) int {
 	return stateId1(state, Login, ClientLoginLoginAcknowledgedID)
 }
 
-func (p *ClientLoginAcknowledged) Read(r io.Reader) (err error) {
+func (p *ClientLoginAcknowledged) Read(_ io.Reader) (err error) {
 	return nil
 }
-func (p *ClientLoginAcknowledged) Write(w io.Writer) (err error) {
+func (p *ClientLoginAcknowledged) Write(_ io.Writer) (err error) {
 	return nil
 }
 
@@ -131,7 +109,7 @@ const (
 )
 
 type ServerLoginDisconnect struct {
-	Reason string
+	Reason text.Component
 }
 
 func (p *ServerLoginDisconnect) Direction() Direction { return Clientbound }
@@ -139,16 +117,11 @@ func (p *ServerLoginDisconnect) ID(state State) int {
 	return stateId1(state, Login, ServerLoginDisconnectID)
 }
 func (p *ServerLoginDisconnect) Read(r io.Reader) (err error) {
-	if p.Reason, err = binary.ReadChatString(r); err != nil {
-		return
-	}
-	return nil
+	p.Reason, err = buffer.TextComponentJSON.Read(r)
+	return
 }
 func (p *ServerLoginDisconnect) Write(w io.Writer) (err error) {
-	if err = binary.WriteChatString(w, p.Reason); err != nil {
-		return
-	}
-	return nil
+	return buffer.TextComponentJSON.Write(w, p.Reason)
 }
 
 type ServerEncryptionRequest struct {
@@ -163,34 +136,13 @@ func (p *ServerEncryptionRequest) ID(state State) int {
 	return stateId1(state, Login, ServerLoginEncryptionRequestID)
 }
 func (p *ServerEncryptionRequest) Read(r io.Reader) (err error) {
-	if p.ServerID, err = binary.ReadSizedString(r, 20); err != nil {
-		return
-	}
-	if p.PublicKey, err = binary.ReadByteArray(r); err != nil {
-		return
-	}
-	if p.VerifyToken, err = binary.ReadByteArray(r); err != nil {
-		return
-	}
-	if p.ShouldAuthenticate, err = binary.ReadBool(r); err != nil {
-		return
-	}
-	return nil
+	p.ServerID, p.PublicKey, p.VerifyToken, p.ShouldAuthenticate, err = buffer.Read4(r,
+		buffer.String, buffer.ByteArray, buffer.ByteArray, buffer.Bool)
+	return
 }
 func (p *ServerEncryptionRequest) Write(w io.Writer) (err error) {
-	if err = binary.WriteSizedString(w, p.ServerID, 20); err != nil {
-		return
-	}
-	if err = binary.WriteByteArray(w, p.PublicKey); err != nil {
-		return
-	}
-	if err = binary.WriteByteArray(w, p.VerifyToken); err != nil {
-		return
-	}
-	if err = binary.WriteBool(w, p.ShouldAuthenticate); err != nil {
-		return
-	}
-	return nil
+	return buffer.Write4(w, buffer.String, p.ServerID, buffer.ByteArray, p.PublicKey,
+		buffer.ByteArray, p.VerifyToken, buffer.Bool, p.ShouldAuthenticate)
 }
 
 type ServerLoginSuccess struct {
@@ -225,28 +177,11 @@ func (p *ServerLoginPluginRequest) ID(state State) int {
 	return stateId1(state, Login, ServerLoginPluginRequestID)
 }
 func (p *ServerLoginPluginRequest) Read(r io.Reader) (err error) {
-	if p.MessageID, err = binary.ReadVarInt(r); err != nil {
-		return
-	}
-	if p.Channel, err = binary.ReadSizedString(r, 20); err != nil {
-		return
-	}
-	if p.Data, err = binary.ReadRaw(r, -1); err != nil {
-		return
-	}
-	return nil
+	p.MessageID, p.Channel, p.Data, err = buffer.Read3(r, buffer.VarInt, buffer.String, buffer.RawBytes)
+	return
 }
 func (p *ServerLoginPluginRequest) Write(w io.Writer) (err error) {
-	if err = binary.WriteVarInt(w, p.MessageID); err != nil {
-		return
-	}
-	if err = binary.WriteSizedString(w, p.Channel, 20); err != nil {
-		return
-	}
-	if err = binary.WriteRaw(w, p.Data); err != nil {
-		return
-	}
-	return nil
+	return buffer.Write3(w, buffer.VarInt, p.MessageID, buffer.String, p.Channel, buffer.RawBytes, p.Data)
 }
 
 var (

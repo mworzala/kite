@@ -3,71 +3,42 @@ package packet
 import (
 	"io"
 
-	"github.com/mworzala/kite/pkg/proto/binary"
+	"github.com/google/uuid"
+	"github.com/mworzala/kite/pkg/buffer"
 )
 
 type GameProfile struct {
-	UUID       string
+	UUID       uuid.UUID
 	Username   string
 	Properties []ProfileProperty
 }
 
 func (p *GameProfile) Read(r io.Reader) (err error) {
-	if p.UUID, err = binary.ReadUUID(r); err != nil {
-		return
-	}
-	if p.Username, err = binary.ReadString(r); err != nil {
-		return
-	}
-	if p.Properties, err = binary.ReadCollection(r, (*ProfileProperty).Read); err != nil {
-		return
-	}
+	p.UUID, p.Username, p.Properties, err = buffer.Read3(r,
+		buffer.UUID, buffer.String, buffer.List(buffer.Struct[ProfileProperty]()))
 	return nil
 }
 
 func (p *GameProfile) Write(w io.Writer) (err error) {
-	if err = binary.WriteUUID(w, p.UUID); err != nil {
-		return
-	}
-	if err = binary.WriteString(w, p.Username); err != nil {
-		return
-	}
-	if err = binary.WriteCollection(w, p.Properties, (*ProfileProperty).Write); err != nil {
-		return
-	}
-	return nil
+	return buffer.Write3(w, buffer.UUID, p.UUID, buffer.String, p.Username,
+		buffer.List(buffer.Struct[ProfileProperty]()), p.Properties)
 }
 
 type ProfileProperty struct {
 	Name      string
 	Value     string
-	Signature *string
+	Signature string // Optional
 }
 
-func (p *ProfileProperty) Read(r io.Reader) (err error) {
-	if p.Name, err = binary.ReadString(r); err != nil {
-		return
-	}
-	if p.Value, err = binary.ReadString(r); err != nil {
-		return
-	}
-	if p.Signature, err = binary.ReadOptionalFunc(r, binary.ReadString); err != nil {
-		return
-	}
+func (p ProfileProperty) Read(r io.Reader) (err error) {
+	p.Name, p.Value, p.Signature, err = buffer.Read3(r,
+		buffer.String, buffer.String, buffer.Opt(buffer.String))
 	return
 }
 
-func (p *ProfileProperty) Write(w io.Writer) (err error) {
-	if err = binary.WriteString(w, p.Name); err != nil {
-		return
-	}
-	if err = binary.WriteString(w, p.Value); err != nil {
-		return
-	}
-	if err = binary.WriteOptionalFunc(w, p.Signature, binary.WriteString); err != nil {
-		return
-	}
-	return
+func (p ProfileProperty) Write(w io.Writer) (err error) {
+	return buffer.Write3(w, buffer.String, p.Name,
+		buffer.String, p.Value, buffer.Opt(buffer.String), p.Signature)
 }
 
 type ResourcePackStatus int

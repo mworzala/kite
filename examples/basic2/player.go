@@ -1,10 +1,11 @@
 package main
 
 import (
+	"errors"
+
 	"github.com/google/uuid"
 	"github.com/mworzala/kite"
-	packet2 "github.com/mworzala/kite/pkg/packet"
-	"github.com/mworzala/kite/pkg/proto"
+	"github.com/mworzala/kite/pkg/packet"
 )
 
 type Player struct {
@@ -13,7 +14,7 @@ type Player struct {
 
 	UUID     uuid.UUID
 	Username string
-	Profile  *packet2.GameProfile
+	Profile  *packet.GameProfile
 
 	pendingLoginChan chan error
 	remote           *kite.Conn
@@ -25,37 +26,35 @@ func (p *Player) Disconnect(reason string) {
 	p.conn.Close()
 }
 
-func (p *Player) handleClientPacket(pp proto.Packet) error {
-	switch pp.State {
-	case packet2.Handshake:
+func (p *Player) handleClientPacket(pp kite.PacketBuffer) error {
+	switch p.conn.GetState() {
+	case packet.Handshake:
 		return p.handleClientHandshakePacket(pp)
-	case packet2.Status:
+	case packet.Status:
 		return p.handleClientStatusPacket(pp)
-	case packet2.Login:
+	case packet.Login:
 		return p.handleClientLoginPacket(pp)
-	case packet2.Config:
+	case packet.Config:
 		return p.handleClientConfigPacket(pp)
-	case packet2.Play:
+	case packet.Play:
 		if p.remote == nil {
 			panic("bad state")
 		}
 		return p.remote.ForwardPacket(pp)
+	default:
+		return errors.New("unexpected client state")
 	}
-
-	println("new packet", pp.Id)
-	pp.Consume()
-	return nil
 }
 
-func (p *Player) handleServerPacket(pp proto.Packet) error {
-	switch pp.State {
-	case packet2.Login:
+func (p *Player) handleServerPacket(pp kite.PacketBuffer) error {
+	switch p.remote.GetState() {
+	case packet.Login:
 		return p.handleServerLoginPacket(pp)
-	case packet2.Config:
+	case packet.Config:
 		return p.handleServerConfigPacket(pp)
-	case packet2.Play:
+	case packet.Play:
 		return p.conn.ForwardPacket(pp)
 	default:
-		return proto.UnknownPacket
+		return errors.New("unexpected server state")
 	}
 }

@@ -5,8 +5,8 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 
+	"github.com/mworzala/kite/pkg/buffer"
 	"github.com/mworzala/kite/pkg/packet"
-	"github.com/mworzala/kite/pkg/proto/binary"
 )
 
 const (
@@ -26,10 +26,10 @@ func CreateSignedForwardingData(requestVersion int, secret []byte, address strin
 	buf.Grow(mac.Size() + expectedBufferSize)
 	buf.Write(make([]byte, mac.Size())) // Reserve space for the HMAC
 
-	if err = binary.WriteVarInt(buf, int32(version)); err != nil {
+	if err = buffer.VarInt.Write(buf, int32(version)); err != nil {
 		return
 	}
-	if err = binary.WriteString(buf, address); err != nil {
+	if err = buffer.String.Write(buf, address); err != nil {
 		return
 	}
 	if err = profile.Write(buf); err != nil {

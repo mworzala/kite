@@ -11,11 +11,9 @@ import (
 	"sync"
 	"syscall"
 
-	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
 	"github.com/mworzala/kite/internal/pkg/crypto"
+	"github.com/mworzala/kite/pkg/buffer"
 	"github.com/mworzala/kite/pkg/packet"
-	"github.com/mworzala/kite/pkg/proto"
-	"github.com/mworzala/kite/pkg/proto/binary"
 	"github.com/valyala/bytebufferpool"
 )
 
@@ -49,10 +47,10 @@ type Conn struct {
 	cacheBuffer *bytebufferpool.ByteBuffer // Used for caching partially read packets. Pooled in readCachePool
 
 	state   packet.State
-	handler func(pp proto.Packet) error
+	handler func(pb PacketBuffer) error
 }
 
-func NewConn(direction packet.Direction, conn net.Conn, handler func(pp proto.Packet) error) *Conn {
+func NewConn(direction packet.Direction, conn net.Conn, handler func(pb PacketBuffer) error) *Conn {
 	if handler == nil {
 		panic("handler must not be nil")
 	}
@@ -86,6 +84,10 @@ func (c *Conn) Close() {
 	c.delegate.Close()
 }
 
+func (c *Conn) GetState() packet.State {
+	return c.state
+}
+
 func (c *Conn) SetState(state packet.State) {
 	c.state = state
 }
@@ -105,10 +107,10 @@ func (c *Conn) EnableEncryption(sharedSecret []byte) error {
 	return nil
 }
 
-func (c *Conn) ForwardPacket(pp proto.Packet) (err error) {
+func (c *Conn) ForwardPacket(pb PacketBuffer) (err error) {
 	// Write the raw packet to the remote
-	pp.Buf.Reset(pp.Start)
-	_, err = c.writer.Write(pp.Buf.RemainingSlice())
+	pb.internal.Reset(pb.mark)
+	_, err = c.writer.Write(pb.internal.RemainingSlice())
 	if errors.Is(err, syscall.EPIPE) || errors.Is(err, net.ErrClosed) {
 		c.Close()
 		return
@@ -133,7 +135,7 @@ func (c *Conn) SendPacket(pkt packet.Packet) (err error) {
 	buf := writePool.Get()
 	defer writePool.Put(buf) // Always return the buffer to the pool
 
-	if err = binary.WriteVarInt(buf, int32(pktId)); err != nil {
+	if err = buffer.VarInt.Write(buf, int32(pktId)); err != nil {
 		return
 	}
 	if err = pkt.Write(buf); err != nil {
@@ -147,17 +149,17 @@ func (c *Conn) SendPacket(pkt packet.Packet) (err error) {
 	return nil
 }
 
-func (c *Conn) writePacketSync(buffer []byte) (err error) {
+func (c *Conn) writePacketSync(buf []byte) (err error) {
 	c.wlock.Lock()
 	defer c.wlock.Unlock()
 
-	if err = binary.WriteVarInt(c.writer, int32(len(buffer))); err != nil {
+	if err = buffer.VarInt.Write(c.writer, int32(len(buf))); err != nil {
 		return
 	}
 
-	n := len(buffer)
+	n := len(buf)
 	for n > 0 {
-		written, err := c.writer.Write(buffer)
+		written, err := c.writer.Write(buf)
 		n -= written
 		if err != nil {
 			return err
@@ -186,16 +188,16 @@ func (c *Conn) ReadLoop() {
 
 		n, err := c.reader.Read(c.readBuffer[start:])
 		if n > 0 {
-			buffer := buffer2.NewPacketBuffer(c.readBuffer[:start+n])
+			buf := buffer.Wrap(c.readBuffer[:start+n])
 
-			c.processPackets(buffer)
+			c.processPackets(buf)
 			if c.closed {
 				return
 			}
 
-			if buffer.Remaining() > 0 {
+			if buf.Remaining() > 0 {
 				c.cacheBuffer = readCachePool.Get()
-				buffer.AllocRemainderTo(c.cacheBuffer)
+				buf.AllocRemainderTo(c.cacheBuffer)
 			}
 		}
 		if errors.Is(err, io.EOF) || errors.Is(err, net.ErrClosed) {
@@ -208,14 +210,14 @@ func (c *Conn) ReadLoop() {
 	}
 }
 
-func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
+func (c *Conn) processPackets(buf *buffer.Buffer) {
 	for {
-		if buffer.Remaining() == 0 {
+		if buf.Remaining() == 0 {
 			return
 		}
 
-		packetStart := buffer.Mark()
-		length, err := binary.ReadVarInt(buffer)
+		packetStart := buf.Mark()
+		length, err := buffer.VarInt.Read(buf)
 		if err != nil {
 			panic(err)
 		}
@@ -237,14 +239,14 @@ func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
 		}
 
 		// If the packet contains more data than is available in the buffer, cache the remainder.
-		if int(length) > buffer.Remaining() {
-			buffer.Reset(packetStart)
-			buffer.Limit(-1)
+		if int(length) > buf.Remaining() {
+			buf.Reset(packetStart)
+			buf.Limit(-1)
 			return
 		}
-		buffer.Limit(int(length)) // Cap the read buffer to the packet length
+		buf.Limit(int(length)) // Cap the read buffer to the packet length
 
-		packetID, err := binary.ReadVarInt(buffer)
+		packetID, err := buffer.VarInt.Read(buf)
 		if errors.Is(err, net.ErrClosed) {
 			c.Close()
 			return
@@ -252,16 +254,16 @@ func (c *Conn) processPackets(buffer *buffer2.PacketBuffer) {
 			panic(err)
 		}
 
-		err = c.handler(proto.Packet{State: c.state, Id: packetID, Buf: buffer, ReadInternal: false, Start: packetStart})
+		err = c.handler(PacketBuffer{Id: int(packetID), internal: buf, mark: packetStart})
 		if err != nil {
 			println(fmt.Errorf("packet processing failed: %w (%s/%s/%d)", err, c.direction.String(), c.state.String(), packetID).Error())
 			c.Close()
 			return
 		}
-		if buffer.Remaining() > 0 {
+		if buf.Remaining() > 0 {
 			panic(fmt.Errorf("%s: %s/%s/%d", "packet not fully read", c.direction.String(), c.state.String(), packetID))
 		}
 
-		buffer.Limit(-1)
+		buf.Limit(-1)
 	}
 }

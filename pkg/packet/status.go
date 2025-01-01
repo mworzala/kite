@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/mworzala/kite/pkg/proto/binary"
+	"github.com/mworzala/kite/pkg/buffer"
 )
 
 const (
@@ -18,7 +18,6 @@ func (p *ClientStatusRequest) Direction() Direction { return Serverbound }
 func (p *ClientStatusRequest) ID(state State) int {
 	return stateId1(state, Status, ClientStatusStatusRequestID)
 }
-
 func (p *ClientStatusRequest) Read(r io.Reader) error  { return nil }
 func (p *ClientStatusRequest) Write(w io.Writer) error { return nil }
 
@@ -30,19 +29,12 @@ func (p *ClientStatusPingRequest) Direction() Direction { return Serverbound }
 func (p *ClientStatusPingRequest) ID(state State) int {
 	return stateId1(state, Status, ClientStatusPingRequestID)
 }
-
 func (p *ClientStatusPingRequest) Read(r io.Reader) (err error) {
-	if p.Payload, err = binary.ReadLong(r); err != nil {
-		return
-	}
-	return nil
+	p.Payload, err = buffer.Long.Read(r)
+	return
 }
-
 func (p *ClientStatusPingRequest) Write(w io.Writer) (err error) {
-	if err = binary.WriteLong(w, p.Payload); err != nil {
-		return
-	}
-	return nil
+	return buffer.Long.Write(w, p.Payload)
 }
 
 // Server
@@ -83,16 +75,11 @@ func (p *ServerStatusResponse) ID(state State) int {
 	return stateId1(state, Status, ServerStatusStatusResponseID)
 }
 func (p *ServerStatusResponse) Read(r io.Reader) (err error) {
-	if p.Payload, err = binary.ReadTypedJSON[StatusResponse](r); err != nil {
-		return
-	}
+	p.Payload, err = buffer.JSON[StatusResponse]().Read(r)
 	return
 }
 func (p *ServerStatusResponse) Write(w io.Writer) (err error) {
-	if err = binary.WriteTypedJSON(w, p.Payload); err != nil {
-		return
-	}
-	return nil
+	return buffer.JSON[StatusResponse]().Write(w, p.Payload)
 }
 
 type ServerStatusPingResponse struct {
@@ -104,16 +91,11 @@ func (p *ServerStatusPingResponse) ID(state State) int {
 	return stateId1(state, Status, ServerStatusPingResponseID)
 }
 func (p *ServerStatusPingResponse) Read(r io.Reader) (err error) {
-	if p.Payload, err = binary.ReadLong(r); err != nil {
-		return
-	}
-	return nil
+	p.Payload, err = buffer.Long.Read(r)
+	return
 }
 func (p *ServerStatusPingResponse) Write(w io.Writer) (err error) {
-	if err = binary.WriteLong(w, p.Payload); err != nil {
-		return
-	}
-	return nil
+	return buffer.Long.Write(w, p.Payload)
 }
 
 var (

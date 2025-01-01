@@ -73,10 +73,10 @@ func (p *ClientConfigurationAck) Direction() Direction { return Serverbound }
 func (p *ClientConfigurationAck) ID(state State) int {
 	return stateId1(state, Play, ClientPlayConfigurationAckID)
 }
-func (p *ClientConfigurationAck) Read(r io.Reader) (err error) {
+func (p *ClientConfigurationAck) Read(_ io.Reader) (err error) {
 	return nil
 }
-func (p *ClientConfigurationAck) Write(w io.Writer) (err error) {
+func (p *ClientConfigurationAck) Write(_ io.Writer) (err error) {
 	return nil
 }
 
@@ -213,10 +213,10 @@ func (p *ServerStartConfiguration) Direction() Direction { return Clientbound }
 func (p *ServerStartConfiguration) ID(state State) int {
 	return stateId1(state, Play, ServerPlayStartConfigurationID)
 }
-func (p *ServerStartConfiguration) Read(r io.Reader) (err error) {
+func (p *ServerStartConfiguration) Read(_ io.Reader) (err error) {
 	return nil
 }
-func (p *ServerStartConfiguration) Write(w io.Writer) (err error) {
+func (p *ServerStartConfiguration) Write(_ io.Writer) (err error) {
 	return nil
 }
 

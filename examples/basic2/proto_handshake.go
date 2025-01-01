@@ -1,20 +1,22 @@
 package main
 
 import (
+	"errors"
+
+	"github.com/mworzala/kite"
 	packet2 "github.com/mworzala/kite/pkg/packet"
-	"github.com/mworzala/kite/pkg/proto"
 )
 
-func (p *Player) handleClientHandshakePacket(pp proto.Packet) (err error) {
-	if pp.Id == packet2.ClientHandshakeHandshakeID {
+func (p *Player) handleClientHandshakePacket(pb kite.PacketBuffer) (err error) {
+	if pb.Id == packet2.ClientHandshakeHandshakeID {
 		pkt := new(packet2.ClientHandshake)
-		if err = pp.Read(pkt); err != nil {
+		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleHandshake(pkt)
 	}
 
-	return proto.UnknownPacket
+	return errors.New("unexpected handshake packet")
 }
 
 func (p *Player) handleHandshake(pkt *packet2.ClientHandshake) error {

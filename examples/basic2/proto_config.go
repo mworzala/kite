@@ -4,66 +4,65 @@ import (
 	"bytes"
 	"fmt"
 
-	buffer2 "github.com/mworzala/kite/internal/pkg/buffer"
-	packet2 "github.com/mworzala/kite/pkg/packet"
-	"github.com/mworzala/kite/pkg/proto"
-	"github.com/mworzala/kite/pkg/proto/binary"
+	"github.com/mworzala/kite"
+	"github.com/mworzala/kite/pkg/buffer"
+	"github.com/mworzala/kite/pkg/packet"
 )
 
-func (p *Player) handleClientConfigPacket(pp proto.Packet) (err error) {
+func (p *Player) handleClientConfigPacket(pb kite.PacketBuffer) (err error) {
 	if p.remote == nil {
 		panic("bad state")
 	}
-	switch pp.Id {
-	case packet2.ClientConfigFinishConfigurationID:
-		pkt := new(packet2.ClientConfigFinishConfiguration)
-		if err = pp.Read(pkt); err != nil {
+	switch pb.Id {
+	case packet.ClientConfigFinishConfigurationID:
+		pkt := new(packet.ClientConfigFinishConfiguration)
+		if err = pb.Read(pkt); err != nil {
 			return
 		}
 		return p.handleClientConfigFinishConfiguration(pkt)
 	default:
-		return p.remote.ForwardPacket(pp)
+		return p.remote.ForwardPacket(pb)
 	}
 }
 
-func (p *Player) handleClientConfigFinishConfiguration(pkt *packet2.ClientConfigFinishConfiguration) (err error) {
+func (p *Player) handleClientConfigFinishConfiguration(pkt *packet.ClientConfigFinishConfiguration) (err error) {
 	err = p.remote.SendPacket(pkt)
-	p.conn.SetState(packet2.Play)
-	p.remote.SetState(packet2.Play)
+	p.conn.SetState(packet.Play)
+	p.remote.SetState(packet.Play)
 	return
 }
 
-func (p *Player) handleServerConfigPacket(pp proto.Packet) (err error) {
-	switch pp.Id {
-	case packet2.ServerConfigPluginMessageID:
-		pkt := new(packet2.ServerPluginMessage)
-		if err = pp.Read(pkt); err != nil {
+func (p *Player) handleServerConfigPacket(pb kite.PacketBuffer) (err error) {
+	switch pb.Id {
+	case packet.ServerConfigPluginMessageID:
+		pkt := new(packet.ServerPluginMessage)
+		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleServerPluginMessage(pkt)
-	case packet2.ServerConfigFinishConfigurationID:
+	case packet.ServerConfigFinishConfigurationID:
 		// Don't need to do anything, just being explicit
-		return p.conn.ForwardPacket(pp)
+		return p.conn.ForwardPacket(pb)
 	default:
-		return p.conn.ForwardPacket(pp)
+		return p.conn.ForwardPacket(pb)
 	}
 }
 
-func (p *Player) handleServerPluginMessage(pkt *packet2.ServerPluginMessage) (err error) {
+func (p *Player) handleServerPluginMessage(pkt *packet.ServerPluginMessage) (err error) {
 	if pkt.Channel == "minecraft:brand" {
-		oldPayload := buffer2.NewPacketBuffer(pkt.Data)
-		oldBrand, err := binary.ReadSizedString(oldPayload, 32767)
+		oldPayload := buffer.Wrap(pkt.Data)
+		oldBrand, err := buffer.String.Read(oldPayload)
 		if err != nil {
 			return err
 		}
 
 		var newPayload bytes.Buffer
-		err = binary.WriteSizedString(&newPayload, fmt.Sprintf("%s // %s", oldBrand, "kite"), 32767)
+		err = buffer.String.Write(&newPayload, fmt.Sprintf("%s // %s", oldBrand, "kite"))
 		if err != nil {
 			return err
 		}
 
-		resp := &packet2.ServerPluginMessage{
+		resp := &packet.ServerPluginMessage{
 			Channel: "minecraft:brand",
 			Data:    newPayload.Bytes(),
 		}

@@ -12,32 +12,31 @@ import (
 	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/pkg/mojang"
 	packet2 "github.com/mworzala/kite/pkg/packet"
-	"github.com/mworzala/kite/pkg/proto"
 	"github.com/mworzala/kite/pkg/velocity"
 )
 
-func (p *Player) handleClientLoginPacket(pp proto.Packet) (err error) {
-	switch pp.Id {
+func (p *Player) handleClientLoginPacket(pb kite.PacketBuffer) (err error) {
+	switch pb.Id {
 	case packet2.ClientLoginLoginStartID:
 		pkt := new(packet2.ClientLoginStart)
-		if err = pp.Read(pkt); err != nil {
+		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleClientLoginStart(pkt)
 	case packet2.ClientLoginLoginAcknowledgedID:
 		pkt := new(packet2.ClientLoginAcknowledged)
-		if err = pp.Read(pkt); err != nil {
+		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleClientLoginAcknowledged(pkt)
 	case packet2.ClientLoginEncryptionResponseID:
 		pkt := new(packet2.ClientEncryptionResponse)
-		if err = pp.Read(pkt); err != nil {
+		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleClientEncryptionResponse(pkt)
 	default:
-		return proto.UnknownPacket
+		return errors.New("unexpected login packet")
 	}
 }
 
@@ -84,15 +83,11 @@ func (p *Player) handleClientEncryptionResponse(pkt *packet2.ClientEncryptionRes
 	p.Username = profile.Name
 	properties := make([]packet2.ProfileProperty, len(profile.Properties))
 	for i, prop := range profile.Properties {
-		p := packet2.ProfileProperty{Name: prop.Name, Value: prop.Value}
-		if prop.Signature != "" {
-			p.Signature = &prop.Signature
-		}
-		properties[i] = p
+		properties[i] = packet2.ProfileProperty{Name: prop.Name, Value: prop.Value, Signature: prop.Signature}
 	}
 
 	p.Profile = &packet2.GameProfile{
-		UUID:       p.UUID.String(),
+		UUID:       p.UUID,
 		Username:   p.Username,
 		Properties: properties,
 	}
@@ -155,7 +150,7 @@ func (p *Player) connectServerSync(address string, port uint16) (*kite.Conn, err
 	// Begin login
 	err = remote.SendPacket(&packet2.ClientLoginStart{
 		Name: p.Username,
-		UUID: p.UUID.String(),
+		UUID: p.UUID,
 	})
 	if err != nil {
 		panic(err)
@@ -175,29 +170,29 @@ func (p *Player) connectServerSync(address string, port uint16) (*kite.Conn, err
 	return remote, nil
 }
 
-func (p *Player) handleServerLoginPacket(pp proto.Packet) (err error) {
+func (p *Player) handleServerLoginPacket(pb kite.PacketBuffer) (err error) {
 	//todo we should handle encryption request here to create an error that the backend server is in online-mode
-	switch pp.Id {
+	switch pb.Id {
 	case packet2.ServerLoginDisconnectID:
 		pkt := new(packet2.ServerLoginDisconnect)
-		if err = pp.Read(pkt); err != nil {
+		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleServerLoginDisconnect(pkt)
 	case packet2.ServerLoginPluginRequestID:
 		pkt := new(packet2.ServerLoginPluginRequest)
-		if err = pp.Read(pkt); err != nil {
+		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleServerLoginPluginRequest(pkt)
 	case packet2.ServerLoginLoginSuccessID:
 		pkt := new(packet2.ServerLoginSuccess)
-		if err = pp.Read(pkt); err != nil {
+		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleServerLoginSuccess(pkt)
 	default:
-		return proto.UnknownPacket
+		return errors.New("unexpected login packet")
 	}
 }
 

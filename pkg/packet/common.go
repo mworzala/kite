@@ -3,11 +3,13 @@ package packet
 import (
 	"io"
 
-	"github.com/mworzala/kite/pkg/proto/binary"
+	"github.com/google/uuid"
+	"github.com/mworzala/kite/pkg/buffer"
+	"github.com/mworzala/kite/pkg/text"
 )
 
 type ClientResourcePackStatus struct {
-	UUID   string
+	UUID   uuid.UUID
 	Status ResourcePackStatus
 }
 
@@ -16,22 +18,11 @@ func (p *ClientResourcePackStatus) ID(state State) int {
 	return stateId2(state, Config, Play, ClientConfigResourcePackResponseID, ClientPlayResourcePackStatusID)
 }
 func (p *ClientResourcePackStatus) Read(r io.Reader) (err error) {
-	if p.UUID, err = binary.ReadString(r); err != nil {
-		return
-	}
-	if p.Status, err = binary.ReadEnum[ResourcePackStatus](r); err != nil {
-		return
-	}
-	return nil
+	p.UUID, p.Status, err = buffer.Read2(r, buffer.UUID, buffer.Enum[ResourcePackStatus]{})
+	return
 }
 func (p *ClientResourcePackStatus) Write(w io.Writer) (err error) {
-	if err = binary.WriteString(w, p.UUID); err != nil {
-		return
-	}
-	if err = binary.WriteEnum[ResourcePackStatus](w, p.Status); err != nil {
-		return
-	}
-	return nil
+	return buffer.Write2(w, buffer.UUID, p.UUID, buffer.Enum[ResourcePackStatus]{}, p.Status)
 }
 
 type ClientPluginMessage struct {
@@ -44,22 +35,11 @@ func (p *ClientPluginMessage) ID(state State) int {
 	return stateId2(state, Config, Play, ClientConfigPluginMessageID, ClientPlayPluginMessageID)
 }
 func (p *ClientPluginMessage) Read(r io.Reader) (err error) {
-	if p.Channel, err = binary.ReadString(r); err != nil {
-		return
-	}
-	if p.Data, err = binary.ReadRaw(r, binary.Remaining); err != nil {
-		return
-	}
-	return nil
+	p.Channel, p.Data, err = buffer.Read2(r, buffer.String, buffer.RawBytes)
+	return
 }
 func (p *ClientPluginMessage) Write(w io.Writer) (err error) {
-	if err = binary.WriteString(w, p.Channel); err != nil {
-		return //todo what actually is max length
-	}
-	if err = binary.WriteRaw(w, p.Data); err != nil {
-		return
-	}
-	return nil
+	return buffer.Write2(w, buffer.String, p.Channel, buffer.RawBytes, p.Data)
 }
 
 type ServerResourcePackPush struct {
@@ -67,7 +47,7 @@ type ServerResourcePackPush struct {
 	Url    string
 	Hash   string
 	Forced bool
-	//Prompt *string //todo needs to be a component, never write
+	Prompt text.Component // Optional
 }
 
 func (p *ServerResourcePackPush) Direction() Direction { return Clientbound }
@@ -75,48 +55,19 @@ func (p *ServerResourcePackPush) ID(state State) int {
 	return stateId2(state, Config, Play, ServerConfigAddResourcePackID, ServerPlayResourcePackPushID)
 }
 func (p *ServerResourcePackPush) Read(r io.Reader) (err error) {
-	if p.Id, err = binary.ReadString(r); err != nil {
-		return
-	}
-	if p.Url, err = binary.ReadString(r); err != nil {
-		return
-	}
-	if p.Hash, err = binary.ReadString(r); err != nil {
-		return
-	}
-	if p.Forced, err = binary.ReadBool(r); err != nil {
-		return
-	}
-	hasPrompt, err := binary.ReadBool(r)
-	if err != nil {
-		return err
-	}
-	if hasPrompt {
-		panic("cannot read resource pack push with prompt")
-	}
-	return nil
+	p.Id, p.Url, p.Hash, p.Forced, p.Prompt, err = buffer.Read5(r,
+		buffer.String, buffer.String, buffer.String,
+		buffer.Bool, buffer.Opt(buffer.TextComponent))
+	return
 }
 func (p *ServerResourcePackPush) Write(w io.Writer) (err error) {
-	if err = binary.WriteString(w, p.Id); err != nil {
-		return
-	}
-	if err = binary.WriteString(w, p.Url); err != nil {
-		return
-	}
-	if err = binary.WriteString(w, p.Hash); err != nil {
-		return
-	}
-	if err = binary.WriteBool(w, p.Forced); err != nil {
-		return
-	}
-	if err = binary.WriteBool(w, false); err != nil {
-		return
-	}
-	return nil
+	return buffer.Write5(w,
+		buffer.String, p.Id, buffer.String, p.Url, buffer.String, p.Hash,
+		buffer.Bool, p.Forced, buffer.Opt(buffer.TextComponent), p.Prompt)
 }
 
 type ServerResourcePackPop struct {
-	Id *string
+	Id uuid.UUID // Optional
 }
 
 func (p *ServerResourcePackPop) Direction() Direction { return Clientbound }
@@ -124,16 +75,11 @@ func (p *ServerResourcePackPop) ID(state State) int {
 	return stateId2(state, Config, Play, ServerConfigRemoveResourcePackID, ServerPlayResourcePackPopID)
 }
 func (p *ServerResourcePackPop) Read(r io.Reader) (err error) {
-	if p.Id, err = binary.ReadOptionalFunc(r, binary.ReadUUID); err != nil {
-		return
-	}
-	return nil
+	p.Id, err = buffer.Opt(buffer.UUID).Read(r)
+	return
 }
 func (p *ServerResourcePackPop) Write(w io.Writer) (err error) {
-	if err = binary.WriteOptionalFunc(w, p.Id, binary.WriteUUID); err != nil {
-		return
-	}
-	return nil
+	return buffer.Opt(buffer.UUID).Write(w, p.Id)
 }
 
 type ServerPluginMessage struct {
@@ -146,22 +92,11 @@ func (p *ServerPluginMessage) ID(state State) int {
 	return stateId2(state, Config, Play, ServerConfigPluginMessageID, ServerPlayPluginMessageID)
 }
 func (p *ServerPluginMessage) Read(r io.Reader) (err error) {
-	if p.Channel, err = binary.ReadString(r); err != nil {
-		return
-	}
-	if p.Data, err = binary.ReadRaw(r, binary.Remaining); err != nil {
-		return
-	}
-	return nil
+	p.Channel, p.Data, err = buffer.Read2(r, buffer.String, buffer.RawBytes)
+	return
 }
 func (p *ServerPluginMessage) Write(w io.Writer) (err error) {
-	if err = binary.WriteSizedString(w, p.Channel, 32767); err != nil {
-		return //todo what actually is max length
-	}
-	if err = binary.WriteRaw(w, p.Data); err != nil {
-		return
-	}
-	return nil
+	return buffer.Write2(w, buffer.String, p.Channel, buffer.RawBytes, p.Data)
 }
 
 var (
