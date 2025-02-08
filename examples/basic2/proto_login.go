@@ -1,16 +1,13 @@
 package main
 
 import (
-	"bytes"
-	"context"
-	"crypto/rsa"
 	"errors"
 	"fmt"
+	"github.com/mworzala/kite/pkg/mojangutil"
 	"net"
 	"time"
 
 	"github.com/mworzala/kite"
-	"github.com/mworzala/kite/pkg/mojang"
 	packet2 "github.com/mworzala/kite/pkg/packet"
 	"github.com/mworzala/kite/pkg/velocity"
 )
@@ -45,63 +42,29 @@ func (p *Player) handleClientLoginStart(pkt *packet2.ClientLoginStart) (err erro
 
 	return p.conn.SendPacket(&packet2.ServerEncryptionRequest{
 		ServerID:           "",
-		PublicKey:          p.proxy.PublicKey,
-		VerifyToken:        p.proxy.VerifyToken,
+		PublicKey:          p.proxy.MojKeyPair.PublicKey(),
+		VerifyToken:        p.conn.GetNonce(),
 		ShouldAuthenticate: true,
 	})
 }
 
 func (p *Player) handleClientEncryptionResponse(pkt *packet2.ClientEncryptionResponse) (err error) {
-	// TODO: verify token should be per-player, also it is only ever needed during login so we need some temporary state
-	// 	     somewhere for that.
-	decryptedVerifyToken, err := rsa.DecryptPKCS1v15(nil, p.proxy.PrivateKey, pkt.VerifyToken)
-	if err != nil {
-		panic(err)
-	} else if !bytes.Equal(p.proxy.VerifyToken, decryptedVerifyToken) {
-		panic(errors.New("verifyToken not match"))
-	}
-
-	sharedSecret, err := rsa.DecryptPKCS1v15(nil, p.proxy.PrivateKey, pkt.SharedSecret)
-	if err != nil {
-		panic(err)
-	}
-
-	// Read and write encrypted data
-	if err = p.conn.EnableEncryption(sharedSecret); err != nil {
-		return err
-	}
-
-	// Do serverside auth with session server
-	profile, err := mojang.HasJoined(context.Background(), p.Username, "", sharedSecret, p.proxy.PublicKey)
-	if err != nil {
-		return err
-	} else if profile == nil {
-		return errors.New("client did not do self auth")
-	}
+	// Complete server side auth and respond with their profile.
+	profile, err := mojangutil.HandleEncryptionResponse(p.conn, p.proxy.MojKeyPair, p.Username, pkt.VerifyToken, pkt.SharedSecret)
 
 	p.UUID = profile.ID
 	p.Username = profile.Name
-	properties := make([]packet2.ProfileProperty, len(profile.Properties))
-	for i, prop := range profile.Properties {
-		properties[i] = packet2.ProfileProperty{Name: prop.Name, Value: prop.Value, Signature: prop.Signature}
-	}
-
-	p.Profile = &packet2.GameProfile{
-		UUID:       p.UUID,
-		Username:   p.Username,
-		Properties: properties,
-	}
+	p.Profile = &profile
 
 	return p.conn.SendPacket(&packet2.ServerLoginSuccess{
-		GameProfile: *p.Profile,
+		GameProfile: profile,
 	})
 }
 
-func (p *Player) handleClientLoginAcknowledged(pkt *packet2.ClientLoginAcknowledged) (err error) {
+func (p *Player) handleClientLoginAcknowledged(_ *packet2.ClientLoginAcknowledged) (err error) {
 	// This should never happen in normal operation, but a client could just send a login ack
 	// immediately in an attempt to bypass auth. So don't let that happen :)
 	if p.Profile == nil {
-		// The player didn't do encryption. Don't let them through.
 		return fmt.Errorf("missing player profile")
 	}
 
@@ -179,6 +142,11 @@ func (p *Player) handleServerLoginPacket(pb kite.PacketBuffer) (err error) {
 			return err
 		}
 		return p.handleServerLoginDisconnect(pkt)
+	case packet2.ServerLoginEncryptionRequestID:
+		pb.Consume()
+		println("Server requested authorization, is it in offline mode?")
+		p.Disconnect("An error has occurred")
+		return nil
 	case packet2.ServerLoginPluginRequestID:
 		pkt := new(packet2.ServerLoginPluginRequest)
 		if err = pb.Read(pkt); err != nil {

@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"github.com/mworzala/kite/pkg/buffer"
 	"io"
 )
 
@@ -8,6 +9,7 @@ import (
 const (
 	ClientPlayTeleportConfirmID = iota
 	ClientPlayBlockEntityTagQueryID
+	ClientPlaySelectBundleItemID
 	ClientPlayChangeDifficultyID
 	ClientPlayChatAckID
 	ClientPlayChatCommandID
@@ -66,6 +68,24 @@ const (
 	ClientPlayUseItemOnID
 	ClientPlayUseItemID
 )
+
+type ClientPlayChat struct {
+	Message string
+}
+
+func (p *ClientPlayChat) Direction() Direction { return Serverbound }
+func (p *ClientPlayChat) ID(state State) int {
+	return stateId1(state, Play, ClientPlayChatAckID)
+}
+func (p *ClientPlayChat) Read(r io.Reader) (err error) {
+	if p.Message, err = buffer.String.Read(r); err != nil {
+		return err
+	}
+	return
+}
+func (p *ClientPlayChat) Write(_ io.Writer) (err error) {
+	panic("not implemented")
+}
 
 type ClientConfigurationAck struct{}
 

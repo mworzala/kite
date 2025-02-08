@@ -1,11 +1,11 @@
 package main
 
-import "crypto/rsa"
+import (
+	"github.com/mworzala/kite/pkg/mojang"
+)
 
 type Proxy struct {
-	PrivateKey  *rsa.PrivateKey
-	PublicKey   []byte
-	VerifyToken []byte
+	MojKeyPair mojang.KeyPair
 
 	VelocitySecret string
 }

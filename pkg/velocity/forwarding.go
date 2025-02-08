@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"github.com/mworzala/kite/pkg/mojang"
 
 	"github.com/mworzala/kite/pkg/buffer"
-	"github.com/mworzala/kite/pkg/packet"
 )
 
 const (
@@ -15,11 +15,10 @@ const (
 	expectedBufferSize = 2048
 )
 
-func CreateSignedForwardingData(requestVersion int, secret []byte, address string, profile *packet.GameProfile) (result []byte, err error) {
+func CreateSignedForwardingData(requestVersion int, secret []byte, address string, profile *mojang.GameProfile) (result []byte, err error) {
 	mac := hmac.New(sha256.New, secret)
 
 	// Currently we only support version 1. I guess we should support the others (relevant >= 1.20.6) in the future.
-	// todo we should also send a real remote address not just localhost.
 	version := DefaultForwardingVersion
 
 	buf := new(bytes.Buffer)

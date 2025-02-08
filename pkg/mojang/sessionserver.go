@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/mworzala/kite/internal/pkg/crypto"
 )
 
@@ -14,19 +13,6 @@ const (
 	sessionServerUrl  = "https://sessionserver.mojang.com"
 	hasJoinedEndpoint = "/session/minecraft/hasJoined"
 )
-
-type GameProfile struct {
-	ID             uuid.UUID         `json:"id"`
-	Name           string            `json:"name"`
-	Properties     []ProfileProperty `json:"properties"`
-	ProfileActions []any             `json:"profileActions"` //todo what actually goes in here and when?
-}
-
-type ProfileProperty struct {
-	Name      string `json:"name"`
-	Value     string `json:"value"`
-	Signature string `json:"signature,omitempty"`
-}
 
 func HasJoined(ctx context.Context, username, serverName string, sharedSecret, publicKey []byte) (*GameProfile, error) {
 	authHash := crypto.Sha1([]byte(serverName), sharedSecret, publicKey)

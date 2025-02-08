@@ -53,3 +53,29 @@ func Struct[T interface {
 func List[T any](t Type[T]) Type[[]T] {
 	return listType[T]{t}
 }
+
+func ReadList[T any](r io.Reader, f func() (T, error)) (result []T, err error) {
+	length, err := VarInt.Read(r)
+	if err != nil {
+		return
+	}
+	result = make([]T, length)
+	for i := range result {
+		if result[i], err = f(); err != nil {
+			return
+		}
+	}
+	return
+}
+
+func WriteList[T any](w io.Writer, list []T, f func(t T) error) (err error) {
+	if err = VarInt.Write(w, int32(len(list))); err != nil {
+		return err
+	}
+	for _, entry := range list {
+		if err = f(entry); err != nil {
+			return err
+		}
+	}
+	return nil
+}

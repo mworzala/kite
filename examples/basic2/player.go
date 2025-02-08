@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/mworzala/kite/pkg/mojang"
 
 	"github.com/google/uuid"
 	"github.com/mworzala/kite"
@@ -14,7 +15,7 @@ type Player struct {
 
 	UUID     uuid.UUID
 	Username string
-	Profile  *packet.GameProfile
+	Profile  *mojang.GameProfile
 
 	pendingLoginChan chan error
 	remote           *kite.Conn
@@ -37,10 +38,7 @@ func (p *Player) handleClientPacket(pp kite.PacketBuffer) error {
 	case packet.Config:
 		return p.handleClientConfigPacket(pp)
 	case packet.Play:
-		if p.remote == nil {
-			panic("bad state")
-		}
-		return p.remote.ForwardPacket(pp)
+		return p.handleClientPlayPacket(pp)
 	default:
 		return errors.New("unexpected client state")
 	}
@@ -53,7 +51,7 @@ func (p *Player) handleServerPacket(pp kite.PacketBuffer) error {
 	case packet.Config:
 		return p.handleServerConfigPacket(pp)
 	case packet.Play:
-		return p.conn.ForwardPacket(pp)
+		return p.handleServerPlayPacket(pp)
 	default:
 		return errors.New("unexpected server state")
 	}

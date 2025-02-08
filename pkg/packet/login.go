@@ -1,6 +1,7 @@
 package packet
 
 import (
+	"github.com/mworzala/kite/pkg/mojang"
 	"io"
 
 	"github.com/google/uuid"
@@ -146,7 +147,7 @@ func (p *ServerEncryptionRequest) Write(w io.Writer) (err error) {
 }
 
 type ServerLoginSuccess struct {
-	GameProfile
+	mojang.GameProfile
 }
 
 func (p *ServerLoginSuccess) Direction() Direction { return Clientbound }
@@ -154,16 +155,10 @@ func (p *ServerLoginSuccess) ID(state State) int {
 	return stateId1(state, Login, ServerLoginLoginSuccessID)
 }
 func (p *ServerLoginSuccess) Read(r io.Reader) (err error) {
-	if err = p.GameProfile.Read(r); err != nil {
-		return
-	}
-	return nil
+	return p.GameProfile.Read(r)
 }
 func (p *ServerLoginSuccess) Write(w io.Writer) (err error) {
-	if err = p.GameProfile.Write(w); err != nil {
-		return
-	}
-	return nil
+	return p.GameProfile.Write(w)
 }
 
 type ServerLoginPluginRequest struct {

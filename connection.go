@@ -3,6 +3,7 @@ package kite
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/rand"
 	"errors"
 	"fmt"
 	"io"
@@ -24,6 +25,8 @@ const (
 	// a length 1 more than the actual data size. This forces the server to cache the packet, using up
 	// to the max packet size in memory (for each connection).
 	maxPacketSizePreConfig = 5 * 1024
+
+	nonceLength = 16
 )
 
 var (
@@ -48,6 +51,8 @@ type Conn struct {
 
 	state   packet.State
 	handler func(pb PacketBuffer) error
+
+	nonce []byte // Login state
 }
 
 func NewConn(direction packet.Direction, conn net.Conn, handler func(pb PacketBuffer) error) *Conn {
@@ -90,6 +95,16 @@ func (c *Conn) GetState() packet.State {
 
 func (c *Conn) SetState(state packet.State) {
 	c.state = state
+}
+
+func (c *Conn) GetNonce() []byte {
+	if c.nonce == nil {
+		c.nonce = make([]byte, nonceLength)
+		if _, err := rand.Read(c.nonce); err != nil {
+			panic(fmt.Errorf("failed to generate random nonce: %w", err))
+		}
+	}
+	return c.nonce
 }
 
 func (c *Conn) EnableEncryption(sharedSecret []byte) error {
