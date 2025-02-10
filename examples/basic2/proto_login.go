@@ -4,30 +4,31 @@ import (
 	"errors"
 	"fmt"
 	"github.com/mworzala/kite/pkg/mojangutil"
+	"github.com/mworzala/kite/pkg/text"
 	"net"
 	"time"
 
 	"github.com/mworzala/kite"
-	packet2 "github.com/mworzala/kite/pkg/packet"
+	"github.com/mworzala/kite/pkg/packet"
 	"github.com/mworzala/kite/pkg/velocity"
 )
 
 func (p *Player) handleClientLoginPacket(pb kite.PacketBuffer) (err error) {
 	switch pb.Id {
-	case packet2.ClientLoginLoginStartID:
-		pkt := new(packet2.ClientLoginStart)
+	case packet.ClientLoginLoginStartID:
+		pkt := new(packet.ClientLoginStart)
 		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleClientLoginStart(pkt)
-	case packet2.ClientLoginLoginAcknowledgedID:
-		pkt := new(packet2.ClientLoginAcknowledged)
+	case packet.ClientLoginLoginAcknowledgedID:
+		pkt := new(packet.ClientLoginAcknowledged)
 		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleClientLoginAcknowledged(pkt)
-	case packet2.ClientLoginEncryptionResponseID:
-		pkt := new(packet2.ClientEncryptionResponse)
+	case packet.ClientLoginEncryptionResponseID:
+		pkt := new(packet.ClientEncryptionResponse)
 		if err = pb.Read(pkt); err != nil {
 			return err
 		}
@@ -37,10 +38,14 @@ func (p *Player) handleClientLoginPacket(pb kite.PacketBuffer) (err error) {
 	}
 }
 
-func (p *Player) handleClientLoginStart(pkt *packet2.ClientLoginStart) (err error) {
+func (p *Player) handleClientLoginStart(pkt *packet.ClientLoginStart) (err error) {
 	p.Username = pkt.Name
 
-	return p.conn.SendPacket(&packet2.ServerEncryptionRequest{
+	_ = p.conn.SendPacket(&packet.ServerLoginDisconnect{
+		Reason: text.Text{Text: "Bye Bye!"},
+	})
+
+	return p.conn.SendPacket(&packet.ServerEncryptionRequest{
 		ServerID:           "",
 		PublicKey:          p.proxy.MojKeyPair.PublicKey(),
 		VerifyToken:        p.conn.GetNonce(),
@@ -48,7 +53,7 @@ func (p *Player) handleClientLoginStart(pkt *packet2.ClientLoginStart) (err erro
 	})
 }
 
-func (p *Player) handleClientEncryptionResponse(pkt *packet2.ClientEncryptionResponse) (err error) {
+func (p *Player) handleClientEncryptionResponse(pkt *packet.ClientEncryptionResponse) (err error) {
 	// Complete server side auth and respond with their profile.
 	profile, err := mojangutil.HandleEncryptionResponse(p.conn, p.proxy.MojKeyPair, p.Username, pkt.VerifyToken, pkt.SharedSecret)
 
@@ -56,12 +61,12 @@ func (p *Player) handleClientEncryptionResponse(pkt *packet2.ClientEncryptionRes
 	p.Username = profile.Name
 	p.Profile = &profile
 
-	return p.conn.SendPacket(&packet2.ServerLoginSuccess{
+	return p.conn.SendPacket(&packet.ServerLoginSuccess{
 		GameProfile: profile,
 	})
 }
 
-func (p *Player) handleClientLoginAcknowledged(_ *packet2.ClientLoginAcknowledged) (err error) {
+func (p *Player) handleClientLoginAcknowledged(_ *packet.ClientLoginAcknowledged) (err error) {
 	// This should never happen in normal operation, but a client could just send a login ack
 	// immediately in an attempt to bypass auth. So don't let that happen :)
 	if p.Profile == nil {
@@ -74,7 +79,7 @@ func (p *Player) handleClientLoginAcknowledged(_ *packet2.ClientLoginAcknowledge
 	}
 
 	// Server connection is already in config
-	p.conn.SetState(packet2.Config)
+	p.conn.SetState(packet.Config)
 
 	return nil
 }
@@ -94,24 +99,24 @@ func (p *Player) connectServerSync(address string, port uint16) (*kite.Conn, err
 		return nil, fmt.Errorf("failed to dial remote: %w", err)
 	}
 
-	remote := kite.NewConn(packet2.Clientbound, serverConn, p.handleServerPacket)
+	remote := kite.NewConn(packet.Clientbound, serverConn, p.handleServerPacket)
 	p.remote = remote // TODO: this whole function is bad
 	go remote.ReadLoop()
 
 	// Handshake immediately, then we are in login.
-	handshake := &packet2.ClientHandshake{
+	handshake := &packet.ClientHandshake{
 		ProtocolVersion: 768,
 		ServerAddress:   address,
 		ServerPort:      port,
-		Intent:          packet2.IntentLogin,
+		Intent:          packet.IntentLogin,
 	}
 	if err = remote.SendPacket(handshake); err != nil {
 		return nil, err
 	}
-	remote.SetState(packet2.Login)
+	remote.SetState(packet.Login)
 
 	// Begin login
-	err = remote.SendPacket(&packet2.ClientLoginStart{
+	err = remote.SendPacket(&packet.ClientLoginStart{
 		Name: p.Username,
 		UUID: p.UUID,
 	})
@@ -136,25 +141,25 @@ func (p *Player) connectServerSync(address string, port uint16) (*kite.Conn, err
 func (p *Player) handleServerLoginPacket(pb kite.PacketBuffer) (err error) {
 	//todo we should handle encryption request here to create an error that the backend server is in online-mode
 	switch pb.Id {
-	case packet2.ServerLoginDisconnectID:
-		pkt := new(packet2.ServerLoginDisconnect)
+	case packet.ServerLoginDisconnectID:
+		pkt := new(packet.ServerLoginDisconnect)
 		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleServerLoginDisconnect(pkt)
-	case packet2.ServerLoginEncryptionRequestID:
+	case packet.ServerLoginEncryptionRequestID:
 		pb.Consume()
 		println("Server requested authorization, is it in offline mode?")
 		p.Disconnect("An error has occurred")
 		return nil
-	case packet2.ServerLoginPluginRequestID:
-		pkt := new(packet2.ServerLoginPluginRequest)
+	case packet.ServerLoginPluginRequestID:
+		pkt := new(packet.ServerLoginPluginRequest)
 		if err = pb.Read(pkt); err != nil {
 			return err
 		}
 		return p.handleServerLoginPluginRequest(pkt)
-	case packet2.ServerLoginLoginSuccessID:
-		pkt := new(packet2.ServerLoginSuccess)
+	case packet.ServerLoginLoginSuccessID:
+		pkt := new(packet.ServerLoginSuccess)
 		if err = pb.Read(pkt); err != nil {
 			return err
 		}
@@ -164,15 +169,15 @@ func (p *Player) handleServerLoginPacket(pb kite.PacketBuffer) (err error) {
 	}
 }
 
-func (p *Player) handleServerLoginDisconnect(pkt *packet2.ServerLoginDisconnect) error {
+func (p *Player) handleServerLoginDisconnect(pkt *packet.ServerLoginDisconnect) error {
 	p.pendingLoginChan <- fmt.Errorf("disconnect: %s", pkt.Reason)
 	return nil
 }
 
-func (p *Player) handleServerLoginPluginRequest(pkt *packet2.ServerLoginPluginRequest) error {
+func (p *Player) handleServerLoginPluginRequest(pkt *packet.ServerLoginPluginRequest) error {
 	if pkt.Channel != "velocity:player_info" {
 		println("unhandled plugin request", pkt.Channel)
-		return p.remote.SendPacket(&packet2.ClientLoginPluginResponse{
+		return p.remote.SendPacket(&packet.ClientLoginPluginResponse{
 			MessageID: pkt.MessageID,
 			Data:      nil, // Unhandled message
 		})
@@ -188,20 +193,20 @@ func (p *Player) handleServerLoginPluginRequest(pkt *packet2.ServerLoginPluginRe
 	}
 
 	println("responding to velocity forwarding request")
-	return p.remote.SendPacket(&packet2.ClientLoginPluginResponse{
+	return p.remote.SendPacket(&packet.ClientLoginPluginResponse{
 		MessageID: pkt.MessageID,
 		Data:      forward,
 	})
 }
 
-func (p *Player) handleServerLoginSuccess(pkt *packet2.ServerLoginSuccess) error {
-	err := p.remote.SendPacket(&packet2.ClientLoginAcknowledged{})
+func (p *Player) handleServerLoginSuccess(pkt *packet.ServerLoginSuccess) error {
+	err := p.remote.SendPacket(&packet.ClientLoginAcknowledged{})
 	if err != nil {
 		return err
 	}
 
 	// Yay! We are connected to the remote server
-	p.remote.SetState(packet2.Config)
+	p.remote.SetState(packet.Config)
 	println("login success")
 	p.pendingLoginChan <- nil
 	return nil

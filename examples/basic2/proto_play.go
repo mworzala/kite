@@ -3,6 +3,7 @@ package main
 import (
     "github.com/mworzala/kite"
     "github.com/mworzala/kite/pkg/packet"
+    "github.com/mworzala/kite/pkg/text"
 )
 
 func (p *Player) handleClientPlayPacket(pb kite.PacketBuffer) (err error) {
@@ -27,6 +28,9 @@ func (p *Player) handleClientPlayPacket(pb kite.PacketBuffer) (err error) {
 
 func (p *Player) handleClientPlayChat(pkt *packet.ClientPlayChat) (err error) {
     println("new message", pkt.Message)
+    if pkt.Message == "kick" {
+        p.Disconnect2(text.Text{Text: "Hello"})
+    }
     return
 }
 

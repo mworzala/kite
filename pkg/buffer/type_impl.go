@@ -223,13 +223,15 @@ func (textComponentType) Write(w io.Writer, v text.Component) error {
 type textComponentJSONType struct{}
 
 func (textComponentJSONType) Read(r io.Reader) (text.Component, error) {
-	String.Read(r)
-	// TODO
+	_, _ = String.Read(r)
 	return nil, nil
 }
 func (textComponentJSONType) Write(w io.Writer, v text.Component) error {
-	// TODO
-	return nil
+	raw, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return String.Write(w, string(raw))
 }
 
 // Enum

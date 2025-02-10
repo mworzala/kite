@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"github.com/mworzala/kite/pkg/mojang"
+	"github.com/mworzala/kite/pkg/text"
 
 	"github.com/google/uuid"
 	"github.com/mworzala/kite"
@@ -22,6 +23,12 @@ type Player struct {
 }
 
 func (p *Player) Disconnect(reason string) {
+	//todo take chat component message
+	println("disconnect")
+	p.conn.Close()
+}
+
+func (p *Player) Disconnect2(message text.Component) {
 	//todo take chat component message
 	println("disconnect")
 	p.conn.Close()

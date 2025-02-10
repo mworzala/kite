@@ -1,7 +1,9 @@
 package text
 
 type Text struct {
-	Text string
-	//S     Style
+	Text string `json:"text" nbt:"text"`
+	//	S    Style
 	//Extra []Component
 }
+
+func (t Text) component() {}

@@ -2,7 +2,6 @@ package text
 
 type Style struct {
 	Color         Color
-	ShadowColor   Color
 	Font          string
 	Bold          Tristate
 	Italic        Tristate
