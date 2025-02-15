@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+
 	"github.com/mworzala/kite/pkg/mojang"
 	"github.com/mworzala/kite/pkg/text"
 
@@ -29,8 +30,8 @@ func (p *Player) Disconnect(reason string) {
 }
 
 func (p *Player) Disconnect2(message text.Component) {
-	//todo take chat component message
-	println("disconnect")
+	println("disconnect", p, "for", text.MarshalPlain(message))
+	_ = p.conn.SendPacket(&packet.ServerDisconnect{Reason: message})
 	p.conn.Close()
 }
 

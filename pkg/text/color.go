@@ -56,9 +56,9 @@ func (c Color) ToString() string {
 
 	// If we have an alpha value of 0xFF, we can use the RGB representation
 	if c&0xFF000000 == 0xFF000000 {
-		return fmt.Sprintf("#%08X", c)
+		return fmt.Sprintf("#%06x", c&0xFFFFFF)
 	} else {
-		return fmt.Sprintf("#%06X", c&0xFFFFFF)
+		return fmt.Sprintf("#%08x", c)
 	}
 }
 

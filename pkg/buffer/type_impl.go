@@ -1,6 +1,7 @@
 package buffer
 
 import (
+	"bytes"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -212,12 +213,10 @@ func (rawBytesType) Write(w io.Writer, v []byte) error {
 type textComponentType struct{}
 
 func (textComponentType) Read(r io.Reader) (text.Component, error) {
-	// TODO
-	return nil, nil
+	return text.UnmarshalNBT(r, true)
 }
 func (textComponentType) Write(w io.Writer, v text.Component) error {
-	// TODO
-	return nil
+	return text.MarshalNBT(w, v, true)
 }
 
 type textComponentJSONType struct{}
@@ -227,7 +226,7 @@ func (textComponentJSONType) Read(r io.Reader) (text.Component, error) {
 	if err != nil {
 		return nil, err
 	}
-	return text.UnmarshalJSON([]byte(raw))
+	return text.UnmarshalJSON(bytes.NewReader([]byte(raw)))
 }
 func (textComponentJSONType) Write(w io.Writer, v text.Component) error {
 	raw, err := text.MarshalJSON(v)

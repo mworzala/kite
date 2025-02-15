@@ -99,6 +99,22 @@ func (p *ServerPluginMessage) Write(w io.Writer) (err error) {
 	return buffer.Write2(w, buffer.String, p.Channel, buffer.RawBytes, p.Data)
 }
 
+type ServerDisconnect struct {
+	Reason text.Component
+}
+
+func (p *ServerDisconnect) Direction() Direction { return Clientbound }
+func (p *ServerDisconnect) ID(state State) int {
+	return stateId2(state, Config, Play, ServerConfigDisconnectID, ServerPlayDisconnectID)
+}
+func (p *ServerDisconnect) Read(r io.Reader) (err error) {
+	p.Reason, err = buffer.TextComponent.Read(r)
+	return
+}
+func (p *ServerDisconnect) Write(w io.Writer) (err error) {
+	return buffer.TextComponent.Write(w, p.Reason)
+}
+
 var (
 	_ Packet = (*ClientResourcePackStatus)(nil)
 	_ Packet = (*ClientPluginMessage)(nil)
@@ -106,4 +122,5 @@ var (
 	_ Packet = (*ServerResourcePackPush)(nil)
 	_ Packet = (*ServerResourcePackPop)(nil)
 	_ Packet = (*ServerPluginMessage)(nil)
+	_ Packet = (*ServerDisconnect)(nil)
 )

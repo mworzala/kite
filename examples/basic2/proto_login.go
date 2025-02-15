@@ -40,10 +40,6 @@ func (p *Player) handleClientLoginPacket(pb kite.PacketBuffer) (err error) {
 func (p *Player) handleClientLoginStart(pkt *packet.ClientLoginStart) (err error) {
 	p.Username = pkt.Name
 
-	//_ = p.conn.SendPacket(&packet.ServerLoginDisconnect{
-	//Reason: text.Text{Text: "Bye Bye!"},
-	//})
-
 	return p.conn.SendPacket(&packet.ServerEncryptionRequest{
 		ServerID:           "",
 		PublicKey:          p.proxy.MojKeyPair.PublicKey(),
