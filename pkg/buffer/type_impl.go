@@ -223,11 +223,14 @@ func (textComponentType) Write(w io.Writer, v text.Component) error {
 type textComponentJSONType struct{}
 
 func (textComponentJSONType) Read(r io.Reader) (text.Component, error) {
-	_, _ = String.Read(r)
-	return nil, nil
+	raw, err := String.Read(r)
+	if err != nil {
+		return nil, err
+	}
+	return text.UnmarshalJSON([]byte(raw))
 }
 func (textComponentJSONType) Write(w io.Writer, v text.Component) error {
-	raw, err := json.Marshal(v)
+	raw, err := text.MarshalJSON(v)
 	if err != nil {
 		return err
 	}

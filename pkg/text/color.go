@@ -101,3 +101,46 @@ func (c Color) Name() string {
 		return ""
 	}
 }
+
+func colorFromHex(s string) (Color, error) {
+	if len(s) > 0 && s[0] == '#' {
+		s = s[1:]
+	}
+	if len(s) != 6 && len(s) != 8 {
+		return 0, fmt.Errorf("invalid color string: %s", s)
+	}
+
+	var c Color
+	var err error
+	if len(s) == 6 {
+		c, err = colorFromHex6(s)
+	} else {
+		c, err = colorFromHex8(s)
+	}
+
+	if err != nil {
+		return 0, err
+	}
+
+	return c, nil
+}
+
+func colorFromHex6(s string) (Color, error) {
+	var c Color
+	_, err := fmt.Sscanf(s, "%06x", &c)
+	if err != nil {
+		return 0, err
+	}
+
+	return c, nil
+}
+
+func colorFromHex8(s string) (Color, error) {
+	var c Color
+	_, err := fmt.Sscanf(s, "%08x", &c)
+	if err != nil {
+		return 0, err
+	}
+
+	return c, nil
+}

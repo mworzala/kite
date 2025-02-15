@@ -10,7 +10,7 @@ type Style struct {
 	Obfuscated    Tristate
 }
 
-type Tristate int8
+type Tristate uint8
 
 const (
 	Unset Tristate = iota

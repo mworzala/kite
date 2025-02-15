@@ -3,11 +3,12 @@ package main
 import (
 	"context"
 	"errors"
-	"github.com/mworzala/kite/pkg/mojang"
 	"log"
 	"net"
 	"os"
 	"os/signal"
+
+	"github.com/mworzala/kite/pkg/mojang"
 
 	"github.com/mworzala/kite"
 	"github.com/mworzala/kite/pkg/packet"
@@ -29,7 +30,7 @@ func main() {
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt)
 	defer cancel()
 
-	listener, err := net.Listen("tcp", "localhost:25577")
+	listener, err := net.Listen("tcp", "0.0.0.0:25577")
 	if err != nil {
 		panic(err)
 	}
